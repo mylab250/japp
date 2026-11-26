@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Học Ngữ Pháp Tiếng Nhật (Minna no Nihongo 50 Bài)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background-color: #0d1117; color: #c9d1d9; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+        .panel-bg { background-color: #161b22; }
+        .box-bg { background-color: #21262d; border: 1px solid #30363d; }
+        .option-btn { background-color: #21262d; border: 1px solid #30363d; transition: all 0.2s; }
+        .option-btn:hover:not(:disabled) { background-color: #30363d; cursor: pointer; }
+        .correct-ans { background-color: #1a4d2e !important; border-color: #2ea043 !important; color: #fff; }
+        .wrong-ans { background-color: #5c1e23 !important; border-color: #f85149 !important; color: #fff; }
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #0d1117; }
+        ::-webkit-scrollbar-thumb { background: #30363d; border-radius: 4px; }
+    </style>
+</head>
+<body class="h-screen flex flex-col justify-between overflow-hidden">
+
+    <!-- ==================== SCREEN 1: CHỌN BÀI HỌC (5 CỘT, KHÔNG CẮT CỤT) ==================== -->
+    <div id="screen-lesson-select" class="flex-1 flex flex-col p-6 overflow-hidden">
+        <div class="text-center mb-6 flex-shrink-0">
+            <div class="text-4xl mb-2">📖</div>
+            <h1 class="text-2xl font-bold text-white mb-1">Ứng Dụng Học Ngữ Pháp Tiếng Nhật (50 Bài)</h1>
+            <p class="text-sm text-gray-400">Chọn bài học bạn muốn ôn tập dưới đây</p>
+        </div>
+
+        <!-- Khung chứa danh sách 50 bài dạng 5 cột -->
+        <div class="flex-1 overflow-y-auto px-2">
+            <div id="lessons-list-container" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 max-w-7xl mx-auto pb-4">
+                <div class="col-span-full text-center text-sm text-gray-500 py-8">Đang tải danh sách bài học...</div>
+            </div>
+        </div>
+
+        <div class="border-t border-gray-800 pt-4 mt-2 max-w-md mx-auto w-full flex-shrink-0 flex gap-2">
+            <input type="file" id="fileInput" accept=".json" class="hidden" onchange="handleFileUpload(event)">
+            <button onclick="document.getElementById('fileInput').click()" class="w-full py-2 bg-gray-800 hover:bg-gray-700 rounded-lg text-sm text-gray-200 border border-gray-700 transition">
+                📁 Nạp file JSON tùy chỉnh từ máy
+            </button>
+        </div>
+    </div>
+
+    <!-- ==================== SCREEN 2: DANH SÁCH CÁC MỤC TRONG BÀI ==================== -->
+    <div id="screen-section-list" class="hidden flex-1 flex flex-col h-full overflow-hidden">
+        <div class="h-14 panel-bg border-b border-gray-700 flex justify-between items-center px-6">
+            <div class="flex items-center space-x-3">
+                <button onclick="showScreen('screen-lesson-select')" class="text-sm bg-gray-800 hover:bg-gray-700 text-gray-300 px-3 py-1.5 rounded border border-gray-600">
+                    &larr; Chọn bài khác
+                </button>
+                <h2 id="lesson-title-display" class="font-bold text-white">Danh sách điểm ngữ pháp</h2>
+            </div>
+        </div>
+
+        <div class="flex-1 overflow-y-auto p-6">
+            <div id="sections-container" class="max-w-3xl mx-auto space-y-4"></div>
+        </div>
+    </div>
+
+    <!-- ==================== SCREEN 3: CHI TIẾT LÝ THUYẾT & VÍ DỤ ==================== -->
+    <div id="screen-theory-detail" class="hidden flex-1 flex flex-col h-full overflow-hidden">
+        <div class="h-14 panel-bg border-b border-gray-700 flex justify-between items-center px-6">
+            <button onclick="showScreen('screen-section-list')" class="text-sm bg-gray-800 hover:bg-gray-700 text-gray-300 px-3 py-1.5 rounded border border-gray-600">
+                &larr; Quay lại danh sách
+            </button>
+            <h2 id="theory-title-display" class="font-bold text-yellow-400 text-sm sm:text-base"></h2>
+            <button onclick="startExercise()" id="btn-goto-exercise" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs px-4 py-2 rounded-lg shadow transition">
+                ✍️ Làm bài tập &rarr;
+            </button>
+        </div>
+
+        <div class="flex-1 overflow-y-auto p-6">
+            <div class="max-w-3xl mx-auto space-y-6">
+                <!-- Cấu trúc ngữ pháp (Pattern) -->
+                <div class="box-bg p-6 rounded-2xl shadow-xl border-l-4 border-blue-500">
+                    <h3 class="text-xs uppercase tracking-wider text-blue-400 font-bold mb-1">📐 Cấu trúc (Pattern)</h3>
+                    <p id="theory-pattern" class="text-lg font-bold text-white font-mono"></p>
+                    <p id="theory-meaning" class="text-sm text-yellow-300 mt-1"></p>
+                </div>
+
+                <!-- Giải thích ngữ pháp -->
+                <div class="box-bg p-6 rounded-2xl shadow-xl">
+                    <h3 class="text-xs uppercase tracking-wider text-gray-400 font-bold mb-2">💡 Giải thích</h3>
+                    <p id="theory-explanation" class="text-base text-gray-100 leading-relaxed mb-4"></p>
+                    <div id="theory-notes-box" class="hidden bg-gray-900/60 p-4 rounded-xl border border-gray-800">
+                        <p class="text-xs font-bold text-cyan-400 mb-1">📌 Lưu ý quan trọng:</p>
+                        <ul id="theory-notes-list" class="list-disc list-inside text-xs text-gray-300 space-y-1"></ul>
+                    </div>
+                </div>
+
+                <!-- Danh sách ví dụ (Nhật - Hiragana - Việt) -->
+                <div class="box-bg p-6 rounded-2xl shadow-xl">
+                    <h3 class="text-xs uppercase tracking-wider text-cyan-400 font-bold mb-4">📚 Câu ví dụ minh họa</h3>
+                    <div id="theory-examples-container" class="space-y-4"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== SCREEN 4: LUYỆN TẬP BÀI TẬP TRẮC NGHIỆM ==================== -->
+    <div id="screen-exercise" class="hidden flex-1 flex flex-col h-full overflow-hidden relative">
+        <div class="h-14 border-b border-gray-700 flex justify-between items-center px-6 panel-bg">
+            <button onclick="showScreen('screen-theory-detail')" class="text-sm bg-gray-800 hover:bg-gray-700 text-gray-300 px-3 py-1.5 rounded border border-gray-600">
+                &larr; Xem lại lý thuyết
+            </button>
+            <div id="exercise-progress-badge" class="bg-purple-600 text-white text-xs font-bold px-3 py-1 rounded-full">Câu 1 / 1</div>
+        </div>
+
+        <div class="flex-1 flex flex-col items-center justify-center p-6 overflow-y-auto">
+            <div class="max-w-2xl w-full">
+                <div class="box-bg rounded-2xl p-8 shadow-2xl mb-6 relative">
+                    <span class="text-xs font-bold text-cyan-400 uppercase tracking-widest block mb-2">Bài tập trắc nghiệm</span>
+                    <h2 id="exercise-question-jp" class="text-xl sm:text-2xl font-bold text-white mb-2 leading-relaxed"></h2>
+                    <p id="exercise-question-vi" class="text-sm text-yellow-300 mb-6"></p>
+                    
+                    <div id="exercise-options-container" class="space-y-3"></div>
+                </div>
+
+                <!-- Hộp giải thích sau khi trả lời -->
+                <div id="exercise-explanation-box" class="box-bg p-4 rounded-xl border-emerald-500/40 bg-emerald-950/20 hidden">
+                    <p class="text-xs font-bold text-emerald-400 mb-1">💡 Giải thích chi tiết:</p>
+                    <p id="exercise-explanation-text" class="text-sm text-gray-200"></p>
+                </div>
+            </div>
+        </div>
+
+        <div class="h-14 border-t border-gray-700 panel-bg px-6 flex justify-between items-center">
+            <button onclick="prevExercise()" class="bg-gray-700 px-4 py-1.5 rounded text-white font-bold">&lt; Câu trước</button>
+            <button onclick="nextExercise()" class="bg-purple-600 hover:bg-purple-500 px-4 py-1.5 rounded text-white font-bold">Câu tiếp theo &gt;</button>
+        </div>
+    </div>
+
+    <script>
+        // Dữ liệu mặc định tích hợp đầy đủ 50 bài học Minna no Nihongo
+        let grammarData = {
+            lessons: [
+                {
+                    id: "minna_01",
+                    title: "Bài 1",
+                    name: "Giới thiệu bản thân và câu danh từ",
+                    level: "N5",
+                    sections: [
+                        {
+                            id: "L01-P01",
+                            title: "Câu khẳng định",
+                            pattern: "S は N です。",
+                            meaning_vi: "S là N.",
+                            explanation_vi: "Dùng để giới thiệu tên, nghề nghiệp, quốc tịch, tuổi. は viết là ha nhưng đọc là wa khi làm trợ từ.",
+                            notes_vi: ["です là cách kết thúc lịch sự; じん chỉ quốc tịch; さい chỉ tuổi."],
+                            examples: [
+                                { japanese: "わたしは がくせいです。", reading_hiragana: "わたしは がくせいです。", vietnamese: "Tôi là học sinh/sinh viên." },
+                                { japanese: "ミンさんは ベトナムじんです。", "reading_hiragana": "みんさんは べとなむじんです。", vietnamese: "Anh/chị Minh là người Việt Nam." }
+                            ],
+                            exercises: [
+                                {
+                                    id: "L01-P01-Q01",
+                                    type: "multiple_choice",
+                                    question_jp: "わたし ___ がくせいです。",
+                                    question_vi: "Tôi là học sinh/sinh viên. Điền trợ từ.",
+                                    options: [
+                                        { japanese: "は", vietnamese: "Trợ từ nêu chủ đề" },
+                                        { japanese: "の", vietnamese: "Của" },
+                                        { japanese: "も", vietnamese: "Cũng" },
+                                        { japanese: "か", vietnamese: "Trợ từ hỏi" }
+                                    ],
+                                    correct_index: 0,
+                                    correct_answer_jp: "は",
+                                    correct_answer_vi: "Trợ từ nêu chủ đề",
+                                    explanation_vi: "S は N です dùng は để nêu chủ đề."
+                                }
+                            ]
+                        },
+                        {
+                            id: "L01-P02",
+                            title: "Câu phủ định",
+                            pattern: "S は N じゃありません。／S は N ではありません。",
+                            meaning_vi: "S không phải là N.",
+                            explanation_vi: "じゃありません là dạng nói lịch sự thông dụng; ではありません trang trọng hơn.",
+                            notes_vi: ["Không dùng です sau じゃありません."],
+                            examples: [
+                                { japanese: "わたしは いしゃじゃありません。", reading_hiragana: "わたしは いしゃじゃありません。", vietnamese: "Tôi không phải bác sĩ." }
+                            ],
+                            exercises: []
+                        }
+                    ]
+                },
+                { id: 2, title: "Bài 2", name: "Đại từ chỉ định và sở hữu", pattern: "これ・それ・あれ、この・その・あの、の", level: "N5", sections: [] },
+                { id: 3, title: "Bài 3", name: "Địa điểm, xuất xứ và giá tiền", pattern: "ここ・そこ・あそこ、どこ、どちら、いくら", level: "N5", sections: [] },
+                { id: 4, title: "Bài 4", name: "Thời gian và chia động từ lịch sự", pattern: "~時、~曜日、ます・ません・ました、から~まで", level: "N5", sections: [] },
+                { id: 5, title: "Bài 5", name: "Di chuyển và phương tiện giao thông", pattern: "へ行きます・来ます・帰ります、で、と", level: "N5", sections: [] },
+                { id: 6, title: "Bài 6", name: "Hành động, địa điểm và lời mời", pattern: "を、場所で、ませんか、ましょう", level: "N5", sections: [] },
+                { id: 7, title: "Bài 7", name: "Công cụ, phương tiện và cho nhận", pattern: "道具で、あげます、もらいます、もう～ました", level: "N5", sections: [] },
+                { id: 8, title: "Bài 8", name: "Tính từ đuôi い và な", pattern: "い形容詞、な形容詞、どう、どんな、そして、が", level: "N5", sections: [] },
+                { id: 9, title: "Bài 9", name: "Sở thích, năng lực và nguyên nhân", pattern: "好き、嫌い、上手、下手、わかります、から", level: "N5", sections: [] },
+                { id: 10, title: "Bài 10", name: "Sự tồn tại và vị trí", pattern: "あります、います、場所に、位置、や～など", level: "N5", sections: [] },
+                { id: 11, title: "Bài 11", name: "Số lượng, thời lượng và tần suất", pattern: "助数詞、～ぐらい、～に～回、だけ", level: "N5", sections: [] },
+                { id: 12, title: "Bài 12", name: "Quá khứ của tính từ và so sánh", pattern: "～かった、～でした、より、どちら、いちばん", level: "N5", sections: [] },
+                { id: 13, title: "Bài 13", name: "Mong muốn và mục đích di chuyển", pattern: "ほしい、～たい、～に行きます", level: "N5", sections: [] },
+                { id: 14, title: "Bài 14", name: "Thể て và hành động đang diễn ra", pattern: "て形、てください、ています、ましょうか", level: "N5", sections: [] },
+                { id: 15, title: "Bài 15", name: "Cho phép, cấm đoán và trạng thái", pattern: "てもいい、てはいけません、ています", level: "N5", sections: [] },
+                { id: 16, title: "Bài 16", name: "Trình tự hành động và nối tính từ", pattern: "～て、てから、～くて、～で、どうやって", level: "N5", sections: [] },
+                { id: 17, title: "Bài 17", name: "Thể ない và nghĩa vụ", pattern: "ない形、ないでください、なければなりません、なくてもいい", level: "N5", sections: [] },
+                { id: 18, title: "Bài 18", name: "Thể từ điển, khả năng và sở thích", pattern: "辞書形、ことができます、趣味、前に", level: "N5", sections: [] },
+                { id: 19, title: "Bài 19", name: "Kinh nghiệm, liệt kê và sự thay đổi", pattern: "た形、たことがあります、たり～たり、なります", level: "N5", sections: [] },
+                { id: 20, title: "Bài 20", name: "Thể thông thường trong giao tiếp", pattern: "普通形、だ、ない、た、けど", level: "N5", sections: [] },
+                { id: 21, title: "Bài 21", name: "Ý kiến, suy nghĩ và trích dẫn", pattern: "と思います、と言います、でしょう", level: "N5", sections: [] },
+                { id: 22, title: "Bài 22", name: "Mệnh đề bổ nghĩa cho danh từ", pattern: "普通形＋名詞、修飾節", level: "N5", sections: [] },
+                { id: 23, title: "Bài 23", name: "Mệnh đề thời gian và điều kiện tự nhiên", pattern: "～とき、～と", level: "N5", sections: [] },
+                { id: 24, title: "Bài 24", name: "Cho nhận hành động", pattern: "てあげます、てもらいます、てくれます", level: "N5", sections: [] },
+                { id: 25, title: "Bài 25", name: "Điều kiện giả định và nhượng bộ", pattern: "～たら、～ても", level: "N5", sections: [] },
+                // Phần 2: N4 (Bài 26 - 50)
+                { id: 26, title: "Bài 26", name: "Giải thích lý do và nhờ vả lịch sự", pattern: "～んです、～んですが、ていただけませんか、たらいいですか", level: "N4", sections: [] },
+                { id: 27, title: "Bài 27", name: "Thể khả năng và giới hạn", pattern: "可能形、見えます、聞こえます、しか～ません", level: "N4", sections: [] },
+                { id: 28, title: "Bài 28", name: "Hai hành động đồng thời và nhiều lý do", pattern: "～ながら、～ています、～し～し", level: "N4", sections: [] },
+                { id: 29, title: "Bài 29", name: "Tự động từ, tha động từ và hoàn tất hành động", pattern: "自動詞、他動詞、ています、てしまいます", level: "N4", sections: [] },
+                { id: 30, title: "Bài 30", name: "Trạng thái kết quả và sự chuẩn bị", pattern: "てあります、ておきます、まだ、 とか", level: "N4", sections: [] },
+                { id: 31, title: "Bài 31", name: "Thể ý hướng, dự định và kế hoạch", pattern: "意向形、と思っています、つもりです、予定です", level: "N4", sections: [] },
+                { id: 32, title: "Bài 32", name: "Lời khuyên và phỏng đoán", pattern: "たほうがいい、ないほうがいい、でしょう、かもしれません", level: "N4", sections: [] },
+                { id: 33, title: "Bài 33", name: "Thể mệnh lệnh, cấm chỉ và truyền đạt thông tin", pattern: "命令形、禁止形、という意味です、と言っていました", level: "N4", sections: [] },
+                { id: 34, title: "Bài 34", name: "Làm theo hướng dẫn và trình tự hành động", pattern: "とおりに、あとで、て／ないで", level: "N4", sections: [] },
+                { id: 35, title: "Bài 35", name: "Thể điều kiện ば và đưa ra lời khuyên", pattern: "条件形、～ば、～なら、ばいいですか", level: "N4", sections: [] },
+                { id: 36, title: "Bài 36", name: "Mục tiêu, thay đổi khả năng và hình thành thói quen", pattern: "ように、ようになります、ようにしています", level: "N4", sections: [] },
+                { id: 37, title: "Bài 37", name: "Thể bị động và nguyên vật liệu", pattern: "受身形、に～られます、から／で作られます", level: "N4", sections: [] },
+                { id: 38, title: "Bài 38", name: "Danh từ hóa bằng の", pattern: "～のは、～のが、～のを、～のは～です", level: "N4", sections: [] },
+                { id: 39, title: "Bài 39", name: "Nguyên nhân, lý do và sự việc giữa chừng", pattern: "～て、～ので、～で、途中で", level: "N4", sections: [] },
+                { id: 40, title: "Bài 40", name: "Câu hỏi gián tiếp và thử thực hiện", pattern: "～か、かどうか、てみます、～さ、でしょうか", level: "N4", sections: [] },
+                { id: 41, title: "Bài 41", name: "Cho nhận với sắc thái kính trọng", pattern: "いただきます、くださいます、やります、てくださいませんか", level: "N4", sections: [] },
+                { id: 42, title: "Bài 42", name: "Mục đích, công dụng và phương tiện", pattern: "ために、のに、数量＋は／も、によって", level: "N4", sections: [] },
+                { id: 43, title: "Bài 43", name: "Suy đoán qua vẻ bề ngoài và đi rồi về", pattern: "～そうです、てきます、てくれませんか", level: "N4", sections: [] },
+                { id: 44, title: "Bài 44", name: "Mức độ quá mức, dễ khó và quyết định", pattern: "すぎます、やすい、にくい、くします、にします", level: "N4", sections: [] },
+                { id: 45, title: "Bài 45", name: "Giả định tình huống và kết quả trái mong đợi", pattern: "場合は、のに", level: "N4", sections: [] },
+                { id: 46, title: "Bài 46", name: "Thời điểm hành động và phán đoán có căn cứ", pattern: "ところです、たばかりです、はずです", level: "N4", sections: [] },
+                { id: 47, title: "Bài 47", name: "Truyền đạt thông tin và suy đoán từ dấu hiệu", pattern: "～そうです、ようです、音・におい・味がします", level: "N4", sections: [] },
+                { id: 48, title: "Bài 48", name: "Thể sai khiến và xin phép lịch sự", pattern: "使役形、させます、させていただけませんか", level: "N4", sections: [] },
+                { id: 49, title: "Bài 49", name: "Tôn kính ngữ", pattern: "尊敬語、お～になります、お／ご～ください", level: "N4", sections: [] },
+                { id: 50, title: "Bài 50", name: "Khiêm nhường ngữ", pattern: "謙譲語、お～します、ご～します、特別な謙譲語", level: "N4", sections: [] }
+            ]
+        };
+
+        let currentLesson = null;
+        let currentSection = null;
+        let currentExercises = [];
+        let currentExIndex = 0;
+        let isExAnswered = false;
+
+        document.addEventListener("DOMContentLoaded", () => {
+            renderLessonMenu();
+        });
+
+        function handleFileUpload(e) {
+            const f = e.target.files[0];
+            if(!f) return;
+            const r = new FileReader();
+            r.onload = ev => {
+                try {
+                    grammarData = JSON.parse(ev.target.result);
+                    renderLessonMenu();
+                    alert('Đã tải file JSON thành công!');
+                } catch(err) {
+                    alert('File JSON không hợp lệ!');
+                }
+            };
+            r.readAsText(f);
+        }
+
+        function showScreen(id) {
+            ['screen-lesson-select', 'screen-section-list', 'screen-theory-detail', 'screen-exercise'].forEach(s => {
+                document.getElementById(s).classList.add('hidden');
+            });
+            document.getElementById(id).classList.remove('hidden');
+        }
+
+        function renderLessonMenu() {
+            const container = document.getElementById('lessons-list-container');
+            container.innerHTML = '';
+            if (!grammarData.lessons) return;
+
+            grammarData.lessons.forEach(l => {
+                const btn = document.createElement('button');
+                // Sử dụng flex-col, text-left và h-auto để hiển thị trọn vẹn toàn bộ tên bài, không dùng dấu ba chấm (...)
+                btn.className = "w-full p-3 bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-xl font-semibold text-white flex flex-col justify-between transition text-left h-auto";
+                btn.onclick = () => selectLesson(l);
+                btn.innerHTML = `
+                    <div class="flex justify-between items-center w-full mb-1">
+                        <span class="text-blue-400 font-bold text-xs uppercase tracking-wider">${l.title}</span>
+                        <span class="text-gray-500 text-xs">&rarr;</span>
+                    </div>
+                    <div class="text-xs font-semibold text-gray-200 mb-1 leading-snug">${l.name || 'Ngữ pháp cơ bản'}</div>
+                    <div class="text-[10px] text-cyan-300 font-mono bg-gray-900/60 p-1.5 rounded border border-gray-800">${l.pattern || 'Đang cập nhật'}</div>
+                `;
+                container.appendChild(btn);
+            });
+        }
+
+        function selectLesson(lesson) {
+            currentLesson = lesson;
+            document.getElementById('lesson-title-display').textContent = `${lesson.title}: ${lesson.name}`;
+            const container = document.getElementById('sections-container');
+            container.innerHTML = '';
+
+            if (!lesson.sections || lesson.sections.length === 0) {
+                // Nếu bài học chưa có phần chi tiết cấu trúc, tự động tạo section mặc định từ thông tin bài
+                container.innerHTML = `
+                    <div class="box-bg p-6 rounded-xl border border-gray-800 text-center space-y-4">
+                        <h3 class="text-lg font-bold text-white">${lesson.title}: ${lesson.name}</h3>
+                        <p class="text-sm text-cyan-300 font-mono">${lesson.pattern}</p>
+                        <p class="text-xs text-gray-400">Bài học này đang ở chế độ tổng quan. Bạn có thể chọn xem lý thuyết mẫu hoặc nạp thêm nội dung chi tiết qua file JSON.</p>
+                        <button onclick="viewSectionDetail({title: '${lesson.title}', pattern: '${lesson.pattern}', meaning_vi: '${lesson.name}', explanation_vi: 'Nội dung tổng quan cho ${lesson.name}.', notes_vi: [], examples: [], exercises: []})" class="bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs px-4 py-2 rounded-lg">
+                            Xem chi tiết lý thuyết bài
+                        </button>
+                    </div>
+                `;
+                showScreen('screen-section-list');
+                return;
+            }
+
+            lesson.sections.forEach(sec => {
+                const card = document.createElement('div');
+                card.className = "box-bg p-5 rounded-xl flex items-center justify-between cursor-pointer border border-gray-800 hover:border-blue-500 transition";
+                card.onclick = () => viewSectionDetail(sec);
+                card.innerHTML = `
+                    <div>
+                        <h4 class="text-base font-bold text-white mb-1">${sec.title}</h4>
+                        <p class="text-xs text-cyan-300 font-mono mb-1">${sec.pattern}</p>
+                        <p class="text-xs text-gray-400">${sec.meaning_vi}</p>
+                    </div>
+                    <span class="text-blue-400 font-bold text-sm ml-4 flex-shrink-0">&rarr; Học lý thuyết</span>
+                `;
+                container.appendChild(card);
+            });
+
+            showScreen('screen-section-list');
+        }
+
+        function viewSectionDetail(section) {
+            currentSection = section;
+            document.getElementById('theory-title-display').textContent = section.title;
+            document.getElementById('theory-pattern').textContent = section.pattern;
+            document.getElementById('theory-meaning').textContent = section.meaning_vi;
+            document.getElementById('theory-explanation').textContent = section.explanation_vi;
+
+            // Ẩn/hiện nút làm bài tập nếu phần này không có bài tập
+            const btnExercise = document.getElementById('btn-goto-exercise');
+            if (!section.exercises || section.exercises.length === 0) {
+                btnExercise.classList.add('hidden');
+            } else {
+                btnExercise.classList.remove('hidden');
+            }
+
+            const notesBox = document.getElementById('theory-notes-box');
+            const notesList = document.getElementById('theory-notes-list');
+            notesList.innerHTML = '';
+            if (section.notes_vi && section.notes_vi.length > 0) {
+                section.notes_vi.forEach(note => {
+                    const li = document.createElement('li');
+                    li.textContent = note;
+                    notesList.appendChild(li);
+                });
+                notesBox.classList.remove('hidden');
+            } else {
+                notesBox.classList.add('hidden');
+            }
+
+            const exContainer = document.getElementById('theory-examples-container');
+            exContainer.innerHTML = '';
+            
+            if (section.examples && section.examples.length > 0) {
+                section.examples.forEach(ex => {
+                    const row = document.createElement('div');
+                    row.className = "bg-gray-900/50 p-4 rounded-xl border border-gray-800 space-y-1";
+                    row.innerHTML = `
+                        <p class="text-sm font-bold text-cyan-300 font-mono">${ex.japanese}</p>
+                        <p class="text-xs text-gray-400 italic font-mono">[${ex.reading_hiragana || ''}]</p>
+                        <p class="text-xs text-yellow-300 font-medium">${ex.vietnamese}</p>
+                    `;
+                    exContainer.appendChild(row);
+                });
+            } else {
+                exContainer.innerHTML = `<p class="text-xs text-gray-500 italic">Không có câu ví dụ minh họa cho mục này.</p>`;
+            }
+
+            showScreen('screen-theory-detail');
+        }
+
+        function startExercise() {
+            if (!currentSection.exercises || currentSection.exercises.length === 0) {
+                return alert('Phần này chưa có câu hỏi bài tập!');
+            }
+            currentExercises = currentSection.exercises;
+            currentExIndex = 0;
+            showScreen('screen-exercise');
+            loadExerciseCard();
+        }
+
+        function loadExerciseCard() {
+            if (currentExercises.length === 0) return;
+            isExAnswered = false;
+            const q = currentExercises[currentExIndex];
+            
+            document.getElementById('exercise-progress-badge').textContent = `Câu ${currentExIndex + 1} / ${currentExercises.length}`;
+            document.getElementById('exercise-question-jp').textContent = q.question_jp;
+            document.getElementById('exercise-question-vi').textContent = q.question_vi;
+            
+            document.getElementById('exercise-explanation-box').classList.add('hidden');
+            document.getElementById('exercise-explanation-text').textContent = q.explanation_vi || '';
+
+            const container = document.getElementById('exercise-options-container');
+            container.innerHTML = '';
+
+            q.options.forEach((opt, idx) => {
+                const btn = document.createElement('button');
+                btn.className = 'option-btn w-full p-4 rounded-xl text-left flex flex-col transition';
+                btn.innerHTML = `
+                    <span class="text-white font-medium text-sm"><b class="text-blue-400 mr-2">[${idx + 1}]</b> ${opt.japanese}</span>
+                    <span class="text-xs text-gray-400 mt-1">${opt.vietnamese}</span>
+                `;
+                btn.onclick = () => selectExerciseOption(opt, btn, q);
+                container.appendChild(btn);
+            });
+        }
+
+        function selectExerciseOption(selectedOpt, selectedBtn, q) {
+            if (isExAnswered) return;
+            isExAnswered = true;
+
+            const allButtons = document.querySelectorAll('#exercise-options-container .option-btn');
+            allButtons.forEach((btn, idx) => {
+                btn.disabled = true;
+                const optObj = q.options[idx];
+                const isCorrectOpt = (idx === q.correct_index) || (optObj.japanese === q.correct_answer_jp);
+                
+                if (isCorrectOpt) {
+                    btn.classList.add('correct-ans');
+                } else if (btn === selectedBtn && !isCorrectOpt) {
+                    btn.classList.add('wrong-ans');
+                } else {
+                    btn.classList.add('opacity-40');
+                }
+            });
+
+            if (q.explanation_vi) {
+                document.getElementById('exercise-explanation-box').classList.remove('hidden');
+            }
+        }
+
+        function nextExercise() {
+            if (currentExIndex < currentExercises.length - 1) {
+                currentExIndex++;
+                loadExerciseCard();
+            } else {
+                alert('Bạn đã hoàn thành tất cả bài tập của phần này!');
+                showScreen('screen-theory-detail');
+            }
+        }
+
+        function prevExercise() {
+            if (currentExIndex > 0) {
+                currentExIndex--;
+                loadExerciseCard();
+            }
+        }
+    </script>
+</body>
+</html>

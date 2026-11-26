@@ -1,0 +1,724 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Học Kanji Thông Minh & Từ Vựng</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background-color: #0d1117; color: #c9d1d9; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+        .panel-bg { background-color: #161b22; }
+        .box-bg { background-color: #21262d; border: 1px solid #30363d; }
+        .option-btn { background-color: #21262d; border: 1px solid #30363d; transition: all 0.2s; }
+        .option-btn:hover:not(:disabled) { background-color: #30363d; cursor: pointer; }
+        .match-btn { background-color: #21262d; border: 1px solid #30363d; transition: all 0.2s; }
+        .match-btn:hover:not(:disabled) { border-color: #58a6ff; }
+        .match-selected { border-color: #38bdf8 !important; background-color: #0369a1 !important; color: #fff !important; }
+        .match-matched { opacity: 0; pointer-events: none; transition: opacity 0.4s ease; }
+        .correct-ans { background-color: #1a4d2e !important; border-color: #2ea043 !important; color: #fff; }
+        .wrong-ans { background-color: #5c1e23 !important; border-color: #f85149 !important; color: #fff; }
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #0d1117; }
+        ::-webkit-scrollbar-thumb { background: #30363d; border-radius: 4px; }
+    </style>
+</head>
+<body class="h-screen flex flex-col justify-between overflow-hidden">
+
+    <!-- ==================== SCREEN 1: CHỌN NHÓM KANJI / BÀI HỌC (HIỂN THỊ 5 CỘT) ==================== -->
+    <div id="screen-lesson-select" class="flex-1 flex flex-col p-6 overflow-hidden">
+        <div class="text-center mb-6 flex-shrink-0">
+            <div class="text-4xl mb-2">⛩️</div>
+            <h1 class="text-2xl font-bold text-white mb-1">Học Kanji & Từ Vựng</h1>
+            <p class="text-sm text-gray-400">Chọn nhóm Kanji (Group) hoặc học toàn bộ</p>
+        </div>
+
+        <!-- Khung chứa danh sách nhóm dạng 5 cột -->
+        <div class="flex-1 overflow-y-auto px-2">
+            <div id="lessons-list-container" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 max-w-7xl mx-auto pb-4">
+                <div class="col-span-full text-center text-sm text-gray-500 py-8">Đang tải dữ liệu từ data.json...</div>
+            </div>
+        </div>
+
+        <div class="border-t border-gray-800 pt-4 mt-2 max-w-md mx-auto w-full flex-shrink-0">
+            <input type="file" id="fileInput" accept=".json" class="hidden" onchange="handleFileUpload(event)">
+            <button onclick="document.getElementById('fileInput').click()" class="w-full py-2 bg-gray-800 hover:bg-gray-700 rounded-lg text-sm text-gray-200 border border-gray-700 transition">
+                📁 Chọn file JSON Kanji thủ công từ máy
+            </button>
+        </div>
+    </div>
+
+    <!-- ==================== SCREEN 2: DANH SÁCH & CHỌN CHẾ ĐỘ (5 CỘT) ==================== -->
+    <div id="screen-word-list" class="hidden flex-1 flex flex-col h-full overflow-hidden">
+        <div class="h-14 panel-bg border-b border-gray-700 flex justify-between items-center px-6">
+            <div class="flex items-center space-x-3">
+                <button onclick="showScreen('screen-lesson-select')" class="text-sm bg-gray-800 hover:bg-gray-700 text-gray-300 px-3 py-1.5 rounded border border-gray-600">
+                    &larr; Đổi nhóm
+                </button>
+                <h2 id="lesson-title-display" class="font-bold text-white">Danh sách Kanji</h2>
+            </div>
+            <div class="text-sm text-gray-400">
+                Đã chọn: <span id="selected-count-badge" class="font-bold text-yellow-400">0</span> Kanji
+            </div>
+        </div>
+
+        <div class="p-4 bg-gray-900 border-b border-gray-800 flex flex-wrap gap-2 items-center justify-between">
+            <div class="flex flex-wrap gap-2">
+                <button onclick="selectAllWords(true)" class="text-xs bg-gray-800 hover:bg-gray-700 text-white px-3 py-1.5 rounded border border-gray-700">Chọn tất cả</button>
+                <button onclick="selectAllWords(false)" class="text-xs bg-gray-800 hover:bg-gray-700 text-white px-3 py-1.5 rounded border border-gray-700">Bỏ chọn hết</button>
+            </div>
+            
+            <!-- MENU CHỌN CHẾ ĐỘ HỌC -->
+            <div class="flex flex-wrap gap-2">
+                <button onclick="startFlashcards(true)" class="bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs px-3 py-2 rounded-lg shadow">
+                    🔀 Trộn & Học Flashcard
+                </button>
+                <button onclick="startFlashcards(false)" class="bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs px-3 py-2 rounded-lg shadow">
+                    🎴 Flashcard Thường
+                </button>
+                <button onclick="startMatchMode('text')" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs px-3 py-2 rounded-lg shadow">
+                    🔗 Nối Từ (4 chữ)
+                </button>
+                <button onclick="startMatchMode('audio')" class="bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-xs px-3 py-2 rounded-lg shadow">
+                    🔊 Nối Âm Thanh
+                </button>
+                <button onclick="startFillBlankMode()" class="bg-pink-600 hover:bg-pink-500 text-white font-bold text-xs px-3 py-2 rounded-lg shadow">
+                    ✍️ Điền Từ Vào Câu
+                </button>
+                <button onclick="startExampleStudyMode()" class="bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs px-3 py-2 rounded-lg shadow">
+                    📖 Học Theo Ví Dụ
+                </button>
+            </div>
+        </div>
+
+        <div class="flex-1 overflow-y-auto p-6">
+            <!-- HIỂN THỊ 5 CỘT (lg:grid-cols-5) -->
+            <div id="word-list-container" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3"></div>
+        </div>
+    </div>
+
+    <!-- ==================== MODE 1: FLASHCARD QUIZ (2 CỘT) ==================== -->
+    <div id="screen-flashcard" class="hidden flex-1 flex flex-col h-full overflow-hidden relative">
+        <div class="h-14 border-b border-gray-700 flex justify-between items-center px-6 panel-bg">
+            <button onclick="showScreen('screen-word-list')" class="text-sm bg-gray-800 hover:bg-gray-700 text-gray-300 px-3 py-1.5 rounded border border-gray-600">
+                &larr; Danh sách Kanji
+            </button>
+            <div id="quiz-progress-badge" class="bg-blue-600 text-white text-xs font-bold px-3 py-1 rounded-full">Kanji 1 / 10</div>
+            <button onclick="speakCurrentWord()" class="bg-gray-800 text-yellow-400 border border-gray-600 px-3 py-1.5 rounded text-sm flex items-center gap-1">
+                🔊 Đọc Kanji <span class="text-xs text-gray-400">(Space)</span>
+            </button>
+        </div>
+
+        <!-- GIAO DIỆN 2 CỘT (Trái: Thẻ Kanji chi tiết, Phải: Đáp án) -->
+        <div class="flex-1 flex items-center justify-center p-6 overflow-y-auto">
+            <div class="max-w-5xl w-full grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+                
+                <!-- CỘT TRÁI: Thẻ thông tin Kanji -->
+                <div class="box-bg rounded-2xl p-6 text-center shadow-2xl relative w-full">
+                    <div class="flex justify-between items-center mb-2">
+                        <span id="card-level-badge" class="text-xs font-bold px-2.5 py-1 rounded bg-blue-500/20 text-blue-400 border border-blue-500/30">N2</span>
+                        <span id="card-hanviet-badge" class="text-sm font-extrabold text-yellow-400 tracking-wider"></span>
+                    </div>
+
+                    <h2 id="card-kanji-char" class="text-6xl sm:text-7xl font-extrabold text-white my-3"></h2>
+                    
+                    <div class="flex justify-center gap-4 text-xs sm:text-sm text-gray-300 mb-4">
+                        <span>Số nét: <b id="card-strokes" class="text-cyan-400"></b></span>
+                        <span>Bộ thủ: <b id="card-radicals" class="text-pink-400"></b></span>
+                        <span>Thành phần: <b id="card-components" class="text-purple-400"></b></span>
+                    </div>
+
+                    <!-- Onyomi & Kunyomi -->
+                    <div class="grid grid-cols-2 gap-2 bg-gray-900/60 p-3 rounded-xl text-left text-xs mb-4 border border-gray-800">
+                        <div><span class="text-gray-400">Onyomi:</span> <span id="card-onyomi" class="text-cyan-300 font-bold"></span></div>
+                        <div><span class="text-gray-400">Kunyomi:</span> <span id="card-kunyomi" class="text-emerald-300 font-bold"></span></div>
+                    </div>
+
+                    <!-- Mnemonic Story -->
+                    <div class="bg-amber-500/10 border border-amber-500/30 rounded-xl p-3 text-left mb-4">
+                        <p class="text-xs text-amber-400 font-bold mb-1">💡 Câu chuyện ghi nhớ:</p>
+                        <p id="card-story" class="text-sm text-gray-200 italic"></p>
+                    </div>
+
+                    <!-- Vocabulary List -->
+                    <div class="bg-gray-900/40 border border-gray-700/60 rounded-xl p-3 text-left">
+                        <p class="text-xs text-gray-400 font-bold mb-1">📖 Từ vựng ví dụ:</p>
+                        <div id="card-vocab-list" class="space-y-1 text-xs"></div>
+                    </div>
+                </div>
+
+                <!-- CỘT PHẢI: Các nút đáp án trắc nghiệm nghĩa Kanji -->
+                <div id="quiz-options-container" class="flex flex-col gap-3 w-full"></div>
+
+            </div>
+        </div>
+
+        <div class="h-14 border-t border-gray-700 panel-bg px-6 flex justify-between items-center">
+            <div class="text-xs text-gray-400 hidden sm:flex gap-4">
+                <span><b>1, 2, 3:</b> Chọn đáp án</span> 
+                <span><b>Alt:</b> Kanji trước</span> 
+                <span><b>Tab:</b> Kanji tiếp</span> 
+                <span><b>Space:</b> Nghe âm</span>
+            </div>
+            <div class="flex items-center space-x-3 ml-auto">
+                <button onclick="prevCard()" class="bg-gray-700 px-4 py-1.5 rounded text-white font-bold">&lt; Trước (Alt)</button>
+                <button onclick="nextCard()" class="bg-blue-600 px-4 py-1.5 rounded text-white font-bold">Tiếp (Tab) &gt;</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== MODE 2 & 3: GHÉP TỪ / NỐI ÂM THANH ==================== -->
+    <div id="screen-match" class="hidden flex-1 flex flex-col h-full overflow-hidden">
+        <div class="h-14 border-b border-gray-700 flex justify-between items-center px-6 panel-bg">
+            <button onclick="showScreen('screen-word-list')" class="text-sm bg-gray-800 hover:bg-gray-700 text-gray-300 px-3 py-1.5 rounded border border-gray-600">
+                &larr; Thoát
+            </button>
+            <h2 id="match-header-title" class="text-sm font-bold tracking-widest uppercase text-gray-300">GHÉP KANJI VỚI NGHĨA ĐÚNG</h2>
+            <div id="match-progress" class="text-xs text-yellow-400 font-bold">Còn 0 chữ</div>
+        </div>
+        <div class="flex-1 flex items-center justify-center p-6 overflow-y-auto">
+            <div class="max-w-3xl w-full grid grid-cols-2 gap-6">
+                <div id="match-left-column" class="flex flex-col gap-4"></div>
+                <div id="match-right-column" class="flex flex-col gap-4"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== MODE 4: ĐIỀN TỪ VÀO CÂU ==================== -->
+    <div id="screen-fill-blank" class="hidden flex-1 flex flex-col h-full overflow-hidden">
+        <div class="h-14 border-b border-gray-700 flex justify-between items-center px-6 panel-bg">
+            <button onclick="showScreen('screen-word-list')" class="text-sm bg-gray-800 hover:bg-gray-700 text-gray-300 px-3 py-1.5 rounded border border-gray-600">
+                &larr; Thoát
+            </button>
+            <div id="fill-blank-progress" class="bg-pink-600 text-white text-xs font-bold px-3 py-1 rounded-full">Câu 1 / 10</div>
+        </div>
+        <div class="flex-1 flex items-center justify-center p-6 overflow-y-auto">
+            <div class="max-w-4xl w-full flex flex-col md:flex-row gap-8 items-center">
+                <div class="w-full md:w-3/5 box-bg bg-pink-600/20 border-pink-500/40 rounded-3xl p-10 flex flex-col items-center justify-center text-center shadow-2xl relative min-h-[300px]">
+                    <button onclick="speakFillBlankWord()" class="absolute top-6 right-6 w-12 h-12 bg-pink-600 hover:bg-pink-500 text-white rounded-full flex items-center justify-center shadow-lg transition">
+                        🔊
+                    </button>
+                    <p class="text-xs text-pink-300 font-bold uppercase tracking-widest mb-4">Hoàn thành câu</p>
+                    <h3 id="fill-blank-sentence" class="text-2xl sm:text-3xl font-extrabold text-white mb-4 tracking-wide leading-relaxed"></h3>
+                    <p id="fill-blank-meaning" class="text-sm text-yellow-300 font-medium mb-2"></p>
+                </div>
+                <div id="fill-blank-options" class="w-full md:w-2/5 flex flex-col gap-3"></div>
+            </div>
+        </div>
+        <div class="h-14 border-t border-gray-700 panel-bg px-6 flex justify-between items-center">
+            <button onclick="prevFillBlank()" class="bg-gray-700 px-4 py-1.5 rounded text-white font-bold">&lt; Trước</button>
+            <button onclick="nextFillBlank()" class="bg-pink-600 px-4 py-1.5 rounded text-white font-bold">Tiếp theo &gt;</button>
+        </div>
+    </div>
+
+    <!-- ==================== MODE 5: HỌC THEO VÍ DỤ ==================== -->
+    <div id="screen-example-study" class="hidden flex-1 flex flex-col h-full overflow-hidden">
+        <div class="h-14 border-b border-gray-700 flex justify-between items-center px-6 panel-bg">
+            <button onclick="showScreen('screen-word-list')" class="text-sm bg-gray-800 hover:bg-gray-700 text-gray-300 px-3 py-1.5 rounded border border-gray-600">
+                &larr; Thoát
+            </button>
+            <div id="ex-progress-badge" class="bg-amber-600 text-white text-xs font-bold px-3 py-1 rounded-full">Ví dụ 1 / 10</div>
+            <button onclick="speakExample()" class="bg-gray-800 text-yellow-400 border border-gray-600 px-3 py-1.5 rounded text-sm">🔊 Phát âm câu</button>
+        </div>
+        <div class="flex-1 flex flex-col items-center justify-center p-6 overflow-y-auto">
+            <div class="max-w-2xl w-full box-bg rounded-2xl p-8 shadow-2xl text-center">
+                <span class="bg-amber-500/20 text-amber-400 text-xs font-bold px-3 py-1 rounded-full border border-amber-500/30">Kanji: <span id="ex-word-tag" class="text-white"></span></span>
+                <h2 id="ex-sentence-jp" class="text-3xl font-bold text-white mt-6 mb-2 tracking-wide"></h2>
+                <p id="ex-sentence-hiragana" class="text-sm text-cyan-400 mb-4"></p>
+                <div class="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-3 mb-4">
+                    <p class="text-xs text-yellow-400 font-bold mb-1">Nghĩa tiếng Việt:</p>
+                    <p id="ex-sentence-vi" class="text-lg font-semibold text-white"></p>
+                </div>
+                <div class="bg-gray-900/60 border border-gray-700 rounded-xl p-4 text-left">
+                    <p class="text-xs text-gray-400 font-bold uppercase mb-2">Phân tích / Dịch từ vựng:</p>
+                    <p id="ex-sentence-breakdown" class="text-sm text-gray-200 leading-relaxed font-mono"></p>
+                </div>
+            </div>
+        </div>
+        <div class="h-14 border-t border-gray-700 panel-bg px-6 flex justify-between items-center">
+            <button onclick="prevExample()" class="bg-gray-700 px-4 py-1.5 rounded text-white font-bold">&lt; Trước</button>
+            <button onclick="nextExample()" class="bg-amber-600 px-4 py-1.5 rounded text-white font-bold">Tiếp theo &gt;</button>
+        </div>
+    </div>
+
+    <script>
+        let kanjiDatabase = []; 
+        let currentGroupKanji = []; 
+        let selectedKanji = []; 
+        let currentIndex = 0;
+        let currentOptions = [];
+        let isAnswered = false;
+
+        document.addEventListener("DOMContentLoaded", () => {
+            fetchDataFromFile('./data.json');
+        });
+
+        function fetchDataFromFile(filePath) {
+            fetch(filePath)
+                .then(r => r.json())
+                .then(data => {
+                    kanjiDatabase = Array.isArray(data) ? data : (data.kanji_list || data.lessons || []);
+                    renderGroupMenu();
+                })
+                .catch(e => {
+                    document.getElementById('lessons-list-container').innerHTML = `<div class="col-span-full text-center text-xs text-red-400 py-4">Không tìm thấy data.json tự động. Hãy bấm nút chọn file bên dưới!</div>`;
+                });
+        }
+
+        function handleFileUpload(e) {
+            const f = e.target.files[0];
+            if(!f) return;
+            const r = new FileReader();
+            r.onload = ev => {
+                try {
+                    const parsed = JSON.parse(ev.target.result);
+                    kanjiDatabase = Array.isArray(parsed) ? parsed : (parsed.kanji_list || parsed.lessons || []);
+                    renderGroupMenu();
+                } catch(err) {
+                    alert('File JSON không hợp lệ!');
+                }
+            };
+            r.readAsText(f);
+        }
+
+        function showScreen(id) {
+            ['screen-lesson-select', 'screen-word-list', 'screen-flashcard', 'screen-match', 'screen-fill-blank', 'screen-example-study'].forEach(s => {
+                document.getElementById(s).classList.add('hidden');
+            });
+            document.getElementById(id).classList.remove('hidden');
+        }
+
+        // Gom nhóm theo "group" và hiển thị dạng 5 cột
+        function renderGroupMenu() {
+            const container = document.getElementById('lessons-list-container');
+            container.innerHTML = '';
+            if (!kanjiDatabase.length) {
+                container.innerHTML = `<div class="col-span-full text-center text-xs text-red-400 py-4">File JSON trống hoặc sai cấu trúc!</div>`;
+                return;
+            }
+
+            const groupsMap = {};
+            kanjiDatabase.forEach(item => {
+                const g = item.group || "Chung";
+                if (!groupsMap[g]) groupsMap[g] = [];
+                groupsMap[g].push(item);
+            });
+
+            // Nút học toàn bộ danh sách (đặt lên đầu hoặc tùy chọn)
+            const allCount = kanjiDatabase.length;
+            const allBtn = document.createElement('button');
+            allBtn.className = "w-full py-3 px-4 bg-blue-600/20 hover:bg-blue-600/30 border border-blue-500/50 rounded-xl font-semibold text-blue-300 flex justify-between items-center transition col-span-full";
+            allBtn.onclick = () => selectGroup('all', kanjiDatabase);
+            allBtn.innerHTML = `<span>🌟 Học toàn bộ danh sách (${allCount} chữ)</span><span class="text-blue-400 text-sm">Chọn &rarr;</span>`;
+            container.appendChild(allBtn);
+
+            Object.keys(groupsMap).forEach(groupName => {
+                const items = groupsMap[groupName];
+                const btn = document.createElement('button');
+                btn.className = "w-full py-3 px-4 bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-xl font-semibold text-white flex justify-between items-center transition text-left";
+                btn.onclick = () => selectGroup(groupName, items);
+                btn.innerHTML = `<span class="truncate pr-2">📂 ${groupName} (${items.length} chữ)</span><span class="text-blue-400 text-sm flex-shrink-0">&rarr;</span>`;
+                container.appendChild(btn);
+            });
+        }
+
+        function selectGroup(groupName, items) {
+            currentGroupKanji = [...items];
+            selectedKanji = [...currentGroupKanji];
+            document.getElementById('lesson-title-display').textContent = groupName === 'all' ? 'Toàn bộ Kanji' : `Nhóm: ${groupName}`;
+            renderKanjiList();
+            showScreen('screen-word-list');
+        }
+
+        function renderKanjiList() {
+            const container = document.getElementById('word-list-container');
+            container.innerHTML = '';
+            
+            currentGroupKanji.forEach(item => {
+                const isChecked = selectedKanji.some(k => k.id === item.id);
+                const card = document.createElement('div');
+                card.className = `box-bg p-4 rounded-xl flex items-center justify-between cursor-pointer border transition-all ${isChecked ? 'border-blue-500 bg-blue-950/20' : 'border-gray-800 opacity-60'}`;
+                card.onclick = () => {
+                    const idx = selectedKanji.findIndex(k => k.id === item.id);
+                    if(idx > -1) selectedKanji.splice(idx, 1);
+                    else selectedKanji.push(item);
+                    renderKanjiList();
+                };
+                
+                card.innerHTML = `
+                    <div class="flex items-center space-x-3 w-full">
+                        <div class="text-4xl font-extrabold text-white w-12 text-center flex-shrink-0">${item.kanji}</div>
+                        <div class="overflow-hidden">
+                            <div class="text-sm font-bold text-yellow-400 truncate">${item.hanViet} <span class="text-xs px-1.5 py-0.5 rounded bg-gray-800 text-gray-300 ml-1">${item.level || ''}</span></div>
+                            <div class="text-xs text-gray-300 font-medium truncate mt-0.5">${item.meaning}</div>
+                            <div class="text-xs text-cyan-400 truncate mt-0.5">Kun: ${item.kunyomi}</div>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+            document.getElementById('selected-count-badge').textContent = selectedKanji.length;
+        }
+
+        function selectAllWords(bool) {
+            selectedKanji = bool ? [...currentGroupKanji] : [];
+            renderKanjiList();
+        }
+
+        function speakWord(text) {
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel();
+                const u = new SpeechSynthesisUtterance(text);
+                u.lang = 'ja-JP';
+                u.rate = 0.85;
+                window.speechSynthesis.speak(u);
+            }
+        }
+
+        /* ==================== MODE 1: FLASHCARD & QUIZ ==================== */
+        function startFlashcards(shouldShuffle = false) {
+            if (!selectedKanji.length) return alert('Chưa chọn chữ Kanji nào để học!');
+            if (shouldShuffle) selectedKanji.sort(() => 0.5 - Math.random());
+            currentIndex = 0;
+            showScreen('screen-flashcard');
+            loadFlashcard();
+        }
+
+        function buildOptions(correctItem) {
+            let pool = kanjiDatabase.filter(k => k.meaning !== correctItem.meaning);
+            pool.sort(() => 0.5 - Math.random());
+            let options = [
+                { label: '1', text: correctItem.meaning, isCorrect: true },
+                { label: '2', text: pool[0] ? pool[0].meaning : "Nghĩa khác A", isCorrect: false },
+                { label: '3', text: pool[1] ? pool[1].meaning : "Nghĩa khác B", isCorrect: false }
+            ];
+            options.sort(() => 0.5 - Math.random());
+            options.forEach((opt, index) => opt.label = (index + 1).toString());
+            return options;
+        }
+
+        function loadFlashcard() {
+            if (selectedKanji.length === 0) return;
+            isAnswered = false;
+            const q = selectedKanji[currentIndex];
+            
+            document.getElementById('quiz-progress-badge').textContent = `Kanji ${currentIndex + 1} / ${selectedKanji.length}`;
+            document.getElementById('card-level-badge').textContent = q.level || 'N?';
+            document.getElementById('card-hanviet-badge').textContent = q.hanViet;
+            document.getElementById('card-kanji-char').textContent = q.kanji;
+            document.getElementById('card-strokes').textContent = q.strokes;
+            document.getElementById('card-radicals').textContent = Array.isArray(q.radicals) ? q.radicals.join(', ') : q.radicals;
+            document.getElementById('card-components').textContent = Array.isArray(q.components) ? q.components.join(', ') : q.components;
+            document.getElementById('card-onyomi').textContent = q.onyomi;
+            document.getElementById('card-kunyomi').textContent = q.kunyomi;
+            document.getElementById('card-story').textContent = q.story;
+
+            const vocabContainer = document.getElementById('card-vocab-list');
+            vocabContainer.innerHTML = '';
+            if (q.vocabulary && q.vocabulary.length > 0) {
+                q.vocabulary.forEach(v => {
+                    const row = document.createElement('div');
+                    row.className = "flex justify-between items-center text-gray-300";
+                    row.innerHTML = `<span><b>${v.word}</b> (${v.reading}) - <span class="text-cyan-300">${v.hanViet}</span></span> <span class="text-yellow-300">${v.meaning}</span>`;
+                    vocabContainer.appendChild(row);
+                });
+            } else {
+                vocabContainer.innerHTML = `<span class="text-gray-500 italic">Không có từ vựng ví dụ</span>`;
+            }
+
+            speakWord(q.kanji);
+
+            currentOptions = buildOptions(q);
+            const container = document.getElementById('quiz-options-container');
+            container.innerHTML = '';
+            currentOptions.forEach(opt => {
+                const btn = document.createElement('button');
+                btn.dataset.key = opt.label;
+                btn.className = 'option-btn w-full text-left p-4 rounded-xl font-medium text-base text-gray-200 flex items-center justify-between gap-2';
+                btn.innerHTML = `<div class="flex items-center"><span class="mr-3 font-bold text-lg text-blue-400">[${opt.label}]</span> <span class="text-white">${opt.text}</span></div>`;
+                btn.onclick = () => selectQuizOption(opt.label);
+                container.appendChild(btn);
+            });
+        }
+
+        function selectQuizOption(selectedKey) {
+            if (isAnswered) return;
+            isAnswered = true;
+            const buttons = document.querySelectorAll('#quiz-options-container .option-btn');
+            buttons.forEach(btn => {
+                btn.disabled = true;
+                const key = btn.dataset.key;
+                const opt = currentOptions.find(o => o.label === key);
+                if (opt.isCorrect) btn.classList.add('correct-ans');
+                else if (key === selectedKey && !opt.isCorrect) btn.classList.add('wrong-ans');
+                else btn.classList.add('opacity-40');
+            });
+            speakCurrentWord();
+        }
+
+        function speakCurrentWord() {
+            speakWord(selectedKanji[currentIndex].kanji);
+        }
+
+        function nextCard() {
+            if (currentIndex < selectedKanji.length - 1) {
+                currentIndex++;
+                loadFlashcard();
+            }
+        }
+
+        function prevCard() {
+            if (currentIndex > 0) {
+                currentIndex--;
+                loadFlashcard();
+            }
+        }
+
+        document.addEventListener('keydown', function(e) {
+            if (document.getElementById('screen-flashcard').classList.contains('hidden')) return;
+            if (['1', '2', '3'].includes(e.key)) {
+                e.preventDefault();
+                if (!isAnswered) selectQuizOption(e.key);
+            }
+            if (e.key === 'Tab') {
+                e.preventDefault();
+                nextCard();
+            }
+            if (e.key === 'Alt') {
+                e.preventDefault();
+                prevCard();
+            }
+            if (e.code === 'Space') {
+                e.preventDefault();
+                speakCurrentWord();
+            }
+        });
+
+        /* ==================== MODE 2 & 3: GHÉP TỪ / NỐI ÂM THANH ==================== */
+        let matchPool = [];
+        let currentBatch = [];
+        let selectedLeft = null;
+        let selectedRight = null;
+        let matchModeType = 'text';
+
+        function startMatchMode(type) {
+            if (!selectedKanji.length) return alert('Chưa chọn chữ Kanji nào!');
+            matchModeType = type;
+            matchPool = [...selectedKanji].sort(() => 0.5 - Math.random());
+            document.getElementById('match-header-title').textContent = type === 'text' ? 'GHÉP KANJI VỚI NGHĨA ĐÚNG' : 'GHÉP ÂM THANH KANJI VỚI NGHĨA ĐÚNG';
+            showScreen('screen-match');
+            loadNextMatchBatch();
+        }
+
+        function loadNextMatchBatch() {
+            selectedLeft = null;
+            selectedRight = null;
+            document.getElementById('match-progress').textContent = `Còn ${matchPool.length} chữ`;
+            if (matchPool.length === 0) {
+                alert('Chúc mừng! Bạn đã hoàn thành xuất sắc bài ghép từ!');
+                showScreen('screen-word-list');
+                return;
+            }
+            currentBatch = matchPool.splice(0, 4);
+            let leftItems = [...currentBatch].sort(() => 0.5 - Math.random());
+            let rightItems = [...currentBatch].sort(() => 0.5 - Math.random());
+            const leftCol = document.getElementById('match-left-column');
+            const rightCol = document.getElementById('match-right-column');
+            leftCol.innerHTML = '';
+            rightCol.innerHTML = '';
+
+            leftItems.forEach(item => {
+                const btn = document.createElement('button');
+                btn.className = 'match-btn w-full py-4 px-6 rounded-xl font-bold text-white flex items-center justify-center min-h-[60px] text-2xl';
+                btn.dataset.id = item.kanji;
+                if (matchModeType === 'text') {
+                    btn.textContent = item.kanji;
+                } else {
+                    btn.innerHTML = `<svg class="w-6 h-6 text-cyan-400 pointer-events-none" fill="currentColor" viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/></svg>`;
+                }
+                btn.onclick = () => {
+                    speakWord(item.kanji);
+                    selectMatchItem('left', btn, item);
+                };
+                leftCol.appendChild(btn);
+            });
+
+            rightItems.forEach(item => {
+                const btn = document.createElement('button');
+                btn.className = 'match-btn w-full py-4 px-6 rounded-xl font-bold text-gray-200 flex items-center justify-center min-h-[60px] text-base';
+                btn.dataset.id = item.kanji;
+                btn.textContent = item.meaning;
+                btn.onclick = () => selectMatchItem('right', btn, item);
+                rightCol.appendChild(btn);
+            });
+        }
+
+        function selectMatchItem(side, element, item) {
+            if (side === 'left') {
+                document.querySelectorAll('#match-left-column .match-btn').forEach(b => b.classList.remove('match-selected'));
+                element.classList.add('match-selected');
+                selectedLeft = { element, item };
+            } else {
+                document.querySelectorAll('#match-right-column .match-btn').forEach(b => b.classList.remove('match-selected'));
+                element.classList.add('match-selected');
+                selectedRight = { element, item };
+            }
+
+            if (selectedLeft && selectedRight) {
+                if (selectedLeft.item.kanji === selectedRight.item.kanji) {
+                    selectedLeft.element.classList.add('match-matched');
+                    selectedRight.element.classList.add('match-matched');
+                    selectedLeft = null;
+                    selectedRight = null;
+                    setTimeout(() => {
+                        const remaining = document.querySelectorAll('#match-left-column .match-btn:not(.match-matched)');
+                        if (remaining.length === 0) loadNextMatchBatch();
+                    }, 400);
+                } else {
+                    selectedLeft.element.classList.add('wrong-ans');
+                    selectedRight.element.classList.add('wrong-ans');
+                    const l = selectedLeft.element;
+                    const r = selectedRight.element;
+                    setTimeout(() => {
+                        l.classList.remove('wrong-ans', 'match-selected');
+                        r.classList.remove('wrong-ans', 'match-selected');
+                    }, 500);
+                    selectedLeft = null;
+                    selectedRight = null;
+                }
+            }
+        }
+
+        /* ==================== MODE 4: ĐIỀN TỪ VÀO CÂU ==================== */
+        let fillBlankIndex = 0;
+        let fillBlankAnswered = false;
+        let validFillBlankItems = [];
+
+        function startFillBlankMode() {
+            validFillBlankItems = selectedKanji.filter(k => k.story || (k.vocabulary && k.vocabulary.length > 0));
+            if (validFillBlankItems.length === 0) {
+                return alert('Không có đủ dữ liệu câu chuyện hoặc từ vựng để điền từ!');
+            }
+            fillBlankIndex = 0;
+            showScreen('screen-fill-blank');
+            loadFillBlankCard();
+        }
+
+        function loadFillBlankCard() {
+            if (fillBlankIndex >= validFillBlankItems.length) fillBlankIndex = 0;
+            const q = validFillBlankItems[fillBlankIndex];
+            fillBlankAnswered = false;
+            document.getElementById('fill-blank-progress').textContent = `Câu ${fillBlankIndex + 1} / ${validFillBlankItems.length}`;
+            
+            let sentence = q.story || `Chữ Kanji mang nghĩa: ${q.meaning}`;
+            let sentenceWithBlank = sentence.includes(q.kanji) ? sentence.replace(q.kanji, "_____") : `Chữ [_____] có nghĩa là: ${q.meaning}`;
+            
+            document.getElementById('fill-blank-sentence').textContent = sentenceWithBlank;
+            document.getElementById('fill-blank-meaning').textContent = `Âm Hán Việt: ${q.hanViet} (${q.meaning})`;
+            speakWord(q.kanji);
+
+            let pool = kanjiDatabase.filter(k => k.kanji !== q.kanji).sort(() => 0.5 - Math.random());
+            let options = [
+                { kanji: q.kanji, meaning: q.meaning, isCorrect: true },
+                { kanji: pool[0]?.kanji || "水", meaning: pool[0]?.meaning || "Nghĩa A", isCorrect: false },
+                { kanji: pool[1]?.kanji || "火", meaning: pool[1]?.meaning || "Nghĩa B", isCorrect: false },
+                { kanji: pool[2]?.kanji || "木", meaning: pool[2]?.meaning || "Nghĩa C", isCorrect: false }
+            ].sort(() => 0.5 - Math.random());
+
+            const container = document.getElementById('fill-blank-options');
+            container.innerHTML = '';
+            options.forEach(opt => {
+                const btn = document.createElement('button');
+                btn.className = 'option-btn w-full p-4 rounded-xl text-left flex flex-col transition shadow';
+                btn.innerHTML = `
+                    <span class="text-white font-bold text-2xl">${opt.kanji}</span>
+                    <span class="text-xs text-gray-400 mt-0.5">${opt.meaning}</span>
+                `;
+                btn.onclick = () => {
+                    if (fillBlankAnswered) return;
+                    fillBlankAnswered = true;
+                    if (opt.isCorrect) {
+                        btn.classList.add('correct-ans');
+                    } else {
+                        btn.classList.add('wrong-ans');
+                        Array.from(container.children).forEach(b => {
+                            if (b.textContent.includes(q.kanji)) b.classList.add('correct-ans');
+                        });
+                    }
+                };
+                container.appendChild(btn);
+            });
+        }
+
+        function speakFillBlankWord() {
+            if (validFillBlankItems[fillBlankIndex]) speakWord(validFillBlankItems[fillBlankIndex].kanji);
+        }
+
+        function nextFillBlank() {
+            if (fillBlankIndex < validFillBlankItems.length - 1) {
+                fillBlankIndex++;
+                loadFillBlankCard();
+            } else {
+                alert('Bạn đã hoàn thành tất cả câu điền từ!');
+                showScreen('screen-word-list');
+            }
+        }
+
+        function prevFillBlank() {
+            if (fillBlankIndex > 0) {
+                fillBlankIndex--;
+                loadFillBlankCard();
+            }
+        }
+
+        /* ==================== MODE 5: HỌC THEO VÍ DỤ ==================== */
+        let exIndex = 0;
+        let validExampleKanji = [];
+
+        function startExampleStudyMode() {
+            validExampleKanji = selectedKanji.filter(k => k.story);
+            if (validExampleKanji.length === 0) return alert('Không có dữ liệu câu chuyện (story) trong danh sách đã chọn!');
+            exIndex = 0;
+            showScreen('screen-example-study');
+            loadExampleCard();
+        }
+
+        function loadExampleCard() {
+            if (exIndex >= validExampleKanji.length) exIndex = 0;
+            const q = validExampleKanji[exIndex];
+            document.getElementById('ex-progress-badge').textContent = `Ví dụ ${exIndex + 1} / ${validExampleKanji.length}`;
+            document.getElementById('ex-word-tag').textContent = `${q.kanji} (${q.hanViet}) - ${q.meaning}`;
+            document.getElementById('ex-sentence-jp').textContent = q.story;
+            document.getElementById('ex-sentence-hiragana').textContent = `Kun: ${q.kunyomi} | On: ${q.onyomi}`;
+            document.getElementById('ex-sentence-vi').textContent = q.meaning;
+            
+            let vocabText = q.vocabulary && q.vocabulary.length > 0 
+                ? q.vocabulary.map(v => `${v.word} (${v.reading}): ${v.meaning}`).join(' | ') 
+                : 'Không có từ vựng đi kèm';
+            document.getElementById('ex-sentence-breakdown').textContent = vocabText;
+            
+            speakWord(q.kanji);
+        }
+
+        function speakExample() {
+            if (validExampleKanji[exIndex]) speakWord(validExampleKanji[exIndex].kanji);
+        }
+
+        function nextExample() {
+            if (exIndex < validExampleKanji.length - 1) {
+                exIndex++;
+                loadExampleCard();
+            } else {
+                alert('Đã học hết các ví dụ!');
+                showScreen('screen-word-list');
+            }
+        }
+
+        function prevExample() {
+            if (exIndex > 0) {
+                exIndex--;
+                loadExampleCard();
+            }
+        }
+    </script>
+</body>
+</html>

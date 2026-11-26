@@ -1,0 +1,719 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Học Từ Vựng Tiếng Nhật & Tiếng Anh</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background-color: #0d1117; color: #c9d1d9; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+        .panel-bg { background-color: #161b22; }
+        .box-bg { background-color: #21262d; border: 1px solid #30363d; }
+        .option-btn { background-color: #21262d; border: 1px solid #30363d; transition: all 0.2s; }
+        .option-btn:hover:not(:disabled) { background-color: #30363d; cursor: pointer; }
+        .match-btn { background-color: #21262d; border: 1px solid #30363d; transition: all 0.2s; }
+        .match-btn:hover:not(:disabled) { border-color: #58a6ff; }
+        .match-selected { border-color: #38bdf8 !important; background-color: #0369a1 !important; color: #fff !important; }
+        .match-matched { opacity: 0; pointer-events: none; transition: opacity 0.4s ease; }
+        .correct-ans { background-color: #1a4d2e !important; border-color: #2ea043 !important; color: #fff; }
+        .wrong-ans { background-color: #5c1e23 !important; border-color: #f85149 !important; color: #fff; }
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #0d1117; }
+        ::-webkit-scrollbar-thumb { background: #30363d; border-radius: 4px; }
+    </style>
+</head>
+<body class="h-screen flex flex-col justify-between overflow-hidden">
+
+    <!-- ==================== SCREEN 1: CHỌN BÀI HỌC ==================== -->
+    <div id="screen-lesson-select" class="flex-1 flex flex-col justify-center items-center p-6 overflow-y-auto">
+        <div class="box-bg max-w-md w-full p-8 rounded-2xl shadow-2xl border border-gray-700 text-center my-auto">
+            <div class="text-5xl mb-4">📚</div>
+            <h1 class="text-2xl font-bold text-white mb-2">Ứng Dụng Học Từ Vựng</h1>
+            <p class="text-sm text-gray-400 mb-6">Chọn bài học bạn muốn luyện tập</p>
+            <div id="lessons-list-container" class="space-y-3 mb-6 max-h-60 overflow-y-auto pr-1">
+                <div class="text-sm text-gray-500 py-4">Đang tải dữ liệu từ data.json...</div>
+            </div>
+            <div class="border-t border-gray-700 pt-4">
+                <input type="file" id="fileInput" accept=".json" class="hidden" onchange="handleFileUpload(event)">
+                <button onclick="document.getElementById('fileInput').click()" class="w-full py-2 bg-gray-700 hover:bg-gray-600 rounded-lg text-sm text-gray-200 border border-gray-600">
+                    📁 Chọn file data.json thủ công từ máy
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== SCREEN 2: DANH SÁCH & CHỌN CHẾ ĐỘ ==================== -->
+    <div id="screen-word-list" class="hidden flex-1 flex flex-col h-full overflow-hidden">
+        <div class="h-14 panel-bg border-b border-gray-700 flex justify-between items-center px-6">
+            <div class="flex items-center space-x-3">
+                <button onclick="showScreen('screen-lesson-select')" class="text-sm bg-gray-800 hover:bg-gray-700 text-gray-300 px-3 py-1.5 rounded border border-gray-600">
+                    &larr; Đổi bài học
+                </button>
+                <h2 id="lesson-title-display" class="font-bold text-white">Danh sách từ vựng</h2>
+            </div>
+            <div class="text-sm text-gray-400">
+                Đã chọn: <span id="selected-count-badge" class="font-bold text-yellow-400">0</span> từ
+            </div>
+        </div>
+        <div class="p-4 bg-gray-900 border-b border-gray-800 flex flex-wrap gap-2 items-center justify-between">
+            <div class="flex flex-wrap gap-2">
+                <button onclick="selectAllWords(true)" class="text-xs bg-gray-800 hover:bg-gray-700 text-white px-3 py-1.5 rounded border border-gray-700">Chọn tất cả</button>
+                <button onclick="selectAllWords(false)" class="text-xs bg-gray-800 hover:bg-gray-700 text-white px-3 py-1.5 rounded border border-gray-700">Bỏ chọn hết</button>
+            </div>
+            <!-- MENU CHỌN CHẾ ĐỘ HỌC -->
+            <div class="flex flex-wrap gap-2">
+                <button onclick="startFlashcards(true)" class="bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs px-3 py-2 rounded-lg shadow">
+                    🔀 Trộn & Học Flashcard
+                </button>
+                <button onclick="startFlashcards(false)" class="bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs px-3 py-2 rounded-lg shadow">
+                    🎴 Flashcard Thường
+                </button>
+                <button onclick="startMatchMode('text')" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs px-3 py-2 rounded-lg shadow">
+                    🔗 Nối Từ (4 từ)
+                </button>
+                <button onclick="startMatchMode('audio')" class="bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-xs px-3 py-2 rounded-lg shadow">
+                    🔊 Nối Âm Thanh
+                </button>
+                <button onclick="startFillBlankMode()" class="bg-pink-600 hover:bg-pink-500 text-white font-bold text-xs px-3 py-2 rounded-lg shadow">
+                    ✍️ Điền Từ Vào Câu
+                </button>
+                <button onclick="startExampleStudyMode()" class="bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs px-3 py-2 rounded-lg shadow">
+                    📖 Học Theo Ví Dụ
+                </button>
+            </div>
+        </div>
+        <div class="flex-1 overflow-y-auto p-6">
+            <div id="word-list-container" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3"></div>
+        </div>
+    </div>
+
+    <!-- ==================== MODE 1: FLASHCARD QUIZ ==================== -->
+    <div id="screen-flashcard" class="hidden flex-1 flex flex-col h-full overflow-hidden relative">
+        <div class="h-14 border-b border-gray-700 flex justify-between items-center px-6 panel-bg">
+            <button onclick="showScreen('screen-word-list')" class="text-sm bg-gray-800 hover:bg-gray-700 text-gray-300 px-3 py-1.5 rounded border border-gray-600">
+                &larr; Danh sách từ
+            </button>
+            <div id="quiz-progress-badge" class="bg-blue-600 text-white text-xs font-bold px-3 py-1 rounded-full">Từ 1 / 10</div>
+            <button onclick="speakCurrentWord()" class="bg-gray-800 text-yellow-400 border border-gray-600 px-3 py-1.5 rounded text-sm flex items-center gap-1">
+                🔊 Đọc lại <span class="text-xs text-gray-400">(Space)</span>
+            </button>
+        </div>
+        <div class="flex-1 flex flex-col items-center justify-center p-6 overflow-y-auto">
+            <div class="max-w-xl w-full">
+                <div class="box-bg rounded-2xl p-8 text-center mb-6 shadow-2xl relative">
+                    <h2 id="card-japanese-word" class="text-4xl sm:text-5xl font-extrabold text-white mb-2 tracking-wide"></h2>
+                    <p id="card-romaji-text" class="text-lg text-cyan-400 font-semibold mb-1"></p>
+                    <p id="card-kanji-text" class="text-xl text-yellow-400 font-medium h-6 mb-4"></p>
+                    <!-- Dòng ví dụ có tô màu nổi bật từ vựng + Nghĩa tiếng Việt câu ví dụ -->
+                    <div id="card-example-box" class="mt-4 pt-4 border-t border-gray-700 text-left bg-gray-900/40 p-4 rounded-xl hidden">
+                        <p class="text-xs text-gray-400 font-bold mb-1">Ví dụ:</p>
+                        <p id="card-example-jp" class="text-sm font-semibold text-gray-200"></p>
+                        <p id="card-example-vi" class="text-xs text-yellow-300 font-semibold mt-1"></p>
+                        <p id="card-example-hiragana" class="text-xs text-gray-400 italic mt-0.5"></p>
+                    </div>
+                </div>
+                <div id="quiz-options-container" class="flex flex-col gap-3"></div>
+            </div>
+        </div>
+        <div class="h-14 border-t border-gray-700 panel-bg px-6 flex justify-between items-center">
+            <div class="text-xs text-gray-400 hidden sm:flex gap-4">
+                <span><b>1, 2, 3:</b> Chọn đáp án</span>
+                <span><b>Alt:</b> Từ trước</span>
+                <span><b>Tab:</b> Từ tiếp theo</span>
+                <span><b>Space:</b> Nghe lại âm</span>
+            </div>
+            <div class="flex items-center space-x-3 ml-auto">
+                <button onclick="prevCard()" class="bg-gray-700 px-4 py-1.5 rounded text-white font-bold">&lt; Trước (Alt)</button>
+                <button onclick="nextCard()" class="bg-blue-600 px-4 py-1.5 rounded text-white font-bold">Tiếp (Tab) &gt;</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== MODE 2 & 3: GHÉP TỪ / NỐI ÂM THANH ==================== -->
+    <div id="screen-match" class="hidden flex-1 flex flex-col h-full overflow-hidden">
+        <div class="h-14 border-b border-gray-700 flex justify-between items-center px-6 panel-bg">
+            <button onclick="showScreen('screen-word-list')" class="text-sm bg-gray-800 hover:bg-gray-700 text-gray-300 px-3 py-1.5 rounded border border-gray-600">
+                &larr; Thoát
+            </button>
+            <h2 id="match-header-title" class="text-sm font-bold tracking-widest uppercase text-gray-300">GHÉP TỪ VỚI NGHĨA ĐÚNG</h2>
+            <div id="match-progress" class="text-xs text-yellow-400 font-bold">Còn 0 từ</div>
+        </div>
+        <div class="flex-1 flex items-center justify-center p-6 overflow-y-auto">
+            <div class="max-w-3xl w-full grid grid-cols-2 gap-6">
+                <div id="match-left-column" class="flex flex-col gap-4"></div>
+                <div id="match-right-column" class="flex flex-col gap-4"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== MODE 4: ĐIỀN TỪ VÀO CÂU ==================== -->
+    <div id="screen-fill-blank" class="hidden flex-1 flex flex-col h-full overflow-hidden">
+        <div class="h-14 border-b border-gray-700 flex justify-between items-center px-6 panel-bg">
+            <button onclick="showScreen('screen-word-list')" class="text-sm bg-gray-800 hover:bg-gray-700 text-gray-300 px-3 py-1.5 rounded border border-gray-600">
+                &larr; Thoát
+            </button>
+            <div id="fill-blank-progress" class="bg-pink-600 text-white text-xs font-bold px-3 py-1 rounded-full">Câu 1 / 10</div>
+        </div>
+        <div class="flex-1 flex items-center justify-center p-6 overflow-y-auto">
+            <div class="max-w-4xl w-full flex flex-col md:flex-row gap-8 items-center">
+                <div class="w-full md:w-3/5 box-bg bg-pink-600/20 border-pink-500/40 rounded-3xl p-10 flex flex-col items-center justify-center text-center shadow-2xl relative min-h-[300px]">
+                    <button onclick="speakFillBlankWord()" class="absolute top-6 right-6 w-12 h-12 bg-pink-600 hover:bg-pink-500 text-white rounded-full flex items-center justify-center shadow-lg transition">
+                        🔊
+                    </button>
+                    <p class="text-xs text-pink-300 font-bold uppercase tracking-widest mb-4">Hoàn thành câu</p>
+                    <h3 id="fill-blank-sentence" class="text-2xl sm:text-3xl font-extrabold text-white mb-4 tracking-wide leading-relaxed"></h3>
+                    <p id="fill-blank-meaning" class="text-sm text-yellow-300 font-medium mb-2"></p>
+                </div>
+                <div id="fill-blank-options" class="w-full md:w-2/5 flex flex-col gap-3"></div>
+            </div>
+        </div>
+        <div class="h-14 border-t border-gray-700 panel-bg px-6 flex justify-between items-center">
+            <button onclick="prevFillBlank()" class="bg-gray-700 px-4 py-1.5 rounded text-white font-bold">&lt; Trước</button>
+            <button onclick="nextFillBlank()" class="bg-pink-600 px-4 py-1.5 rounded text-white font-bold">Tiếp theo &gt;</button>
+        </div>
+    </div>
+
+    <!-- ==================== MODE 5: HỌC THEO VÍ DỤ ==================== -->
+    <div id="screen-example-study" class="hidden flex-1 flex flex-col h-full overflow-hidden">
+        <div class="h-14 border-b border-gray-700 flex justify-between items-center px-6 panel-bg">
+            <button onclick="showScreen('screen-word-list')" class="text-sm bg-gray-800 hover:bg-gray-700 text-gray-300 px-3 py-1.5 rounded border border-gray-600">
+                &larr; Thoát
+            </button>
+            <div id="ex-progress-badge" class="bg-amber-600 text-white text-xs font-bold px-3 py-1 rounded-full">Ví dụ 1 / 10</div>
+            <button onclick="speakExample()" class="bg-gray-800 text-yellow-400 border border-gray-600 px-3 py-1.5 rounded text-sm">🔊 Phát âm câu</button>
+        </div>
+        <div class="flex-1 flex flex-col items-center justify-center p-6 overflow-y-auto">
+            <div class="max-w-2xl w-full box-bg rounded-2xl p-8 shadow-2xl text-center">
+                <span class="bg-amber-500/20 text-amber-400 text-xs font-bold px-3 py-1 rounded-full border border-amber-500/30">Từ vựng: <span id="ex-word-tag" class="text-white"></span></span>
+                
+                <!-- 1. Câu tiếng Nhật -->
+                <h2 id="ex-sentence-jp" class="text-3xl font-bold text-white mt-6 mb-2 tracking-wide"></h2>
+                <!-- Hiragana -->
+                <p id="ex-sentence-hiragana" class="text-sm text-cyan-400 mb-4"></p>
+                
+                <!-- 2. Câu tiếng Việt đầy đủ -->
+                <div class="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-3 mb-4">
+                    <p class="text-xs text-yellow-400 font-bold mb-1">Nghĩa tiếng Việt:</p>
+                    <p id="ex-sentence-vi" class="text-lg font-semibold text-white"></p>
+                </div>
+
+                <!-- 3. Dịch từng từ -->
+                <div class="bg-gray-900/60 border border-gray-700 rounded-xl p-4 text-left">
+                    <p class="text-xs text-gray-400 font-bold uppercase mb-2">Dịch từng từ:</p>
+                    <p id="ex-sentence-breakdown" class="text-sm text-gray-200 leading-relaxed font-mono"></p>
+                </div>
+            </div>
+        </div>
+        <div class="h-14 border-t border-gray-700 panel-bg px-6 flex justify-between items-center">
+            <button onclick="prevExample()" class="bg-gray-700 px-4 py-1.5 rounded text-white font-bold">&lt; Trước</button>
+            <button onclick="nextExample()" class="bg-amber-600 px-4 py-1.5 rounded text-white font-bold">Tiếp theo &gt;</button>
+        </div>
+    </div>
+
+    <script>
+        const kanaToRomajiMap = {
+            'きゃ':'kya','きゅ':'kyu','きょ':'kyo','しゃ':'sha','しゅ':'shu','しょ':'sho',
+            'ちゃ':'cha','ちゅ':'chu','ちょ':'cho','にゃ':'nya','にゅ':'nyu','にょ':'nyo',
+            'ひゃ':'hya','ひゅ':'hyu','ひょ':'hyo','みゃ':'mya','みゅ':'myu','みょ':'myo',
+            'りゃ':'rya','りゅ':'ryu','りょ':'ryo','ぎゃ':'gya','ぎゅ':'gyu','ぎょ':'gyo',
+            'じゃ':'ja','じゅ':'ju','じょ':'jo','ぢゃ':'ja','ぢゅ':'ju','ぢょ':'jo',
+            'びゃ':'bya','びゅ':'byu','びょ':'byo','ぴゃ':'pya','ぴゅ':'pyu','ぴょ':'pyo',
+            'キャ':'kya','キュ':'kyu','キョ':'kyo','シャ':'sha','シュ':'shu','ショ':'sho',
+            'チャ':'cha','チュ':'chu','チョ':'cho','ニャ':'nya','ニュ':'nyu','ニョ':'nyo',
+            'ヒャ':'hya','ヒュ':'hyu','ヒョ':'hyo','ミャ':'mya','ミュ':'myu','ミョ':'myo',
+            'リャ':'rya','リュ':'ryu','リョ':'ryo','ギャ':'gya','ギュ':'gyu','ギョ':'gyo',
+            'ジャ':'ja','ジュ':'ju','ジョ':'jo','ヂャ':'ja','ヂュ':'ju','ヂョ':'jo',
+            'ビャ':'bya','ビュ':'byu','ビョ':'byo','ぴゃ':'pya','ぴゅ':'pyu','ぴょ':'pyo',
+            'あ':'a','い':'i','う':'u','え':'e','お':'o',
+            'か':'ka','き':'ki','く':'ku','け':'ke','こ':'ko',
+            'さ':'sa','し':'shi','す':'su','せ':'se','そ':'so',
+            'た':'ta','ち':'chi','つ':'tsu','て':'te','と':'to',
+            'な':'na','に':'ni','ぬ':'nu','ね':'ne','の':'no',
+            'は':'ha','ひ':'hi','ふ':'fu','へ':'he','ほ':'ho',
+            'ま':'ma','み':'mi','む':'mu','め':'me','も':'mo',
+            'や':'ya','ゆ':'yu','よ':'yo',
+            'ら':'ra','り':'ri','る':'ru','れ':'re','ろ':'ro',
+            'わ':'wa','を':'o','ん':'n',
+            'が':'ga','ぎ':'gi','ぐ':'gu','げ':'ge','ご':'go',
+            'ざ':'za','じ':'ji','ず':'zu','ぜ':'ze','ぞ':'zo',
+            'だ':'da','ぢ':'ji','づ':'zu','で':'de','ど':'do',
+            'ば':'ba','び':'bi','ぶ':'bu','べ':'be','ぼ':'bo',
+            'ぱ':'pa','ぴ':'pi','ぷ':'pu','ぺ':'pe','ぽ':'po',
+            'ア':'a','イ':'i','ウ':'u','エ':'e','オ':'o',
+            'カ':'ka','キ':'ki','ク':'ku','ケ':'ke','コ':'ko',
+            'サ':'sa','シ':'shi','ス':'su','セ':'se','ソ':'so',
+            'タ':'ta','チ':'chi','ツ':'tsu','テ':'te','ト':'to',
+            'ナ':'na','ニ':'ni','ヌ':'nu','ネ':'ne','ノ':'no',
+            'ハ':'ha','ヒ':'hi','フ':'fu','ヘ':'he','ホ':'ho',
+            'マ':'ma','ミ':'mi','ム':'mu','メ':'me','モ':'mo',
+            'ヤ':'ya','ユ':'yu','ヨ':'yo',
+            'ラ':'ra','リ':'ri','ル':'ru','レ':'re','ロ':'ro',
+            'ワ':'wa','ヲ':'o','ン':'n',
+            'ガ':'ga','ギ':'gi','グ':'gu','ゲ':'ge','ゴ':'go',
+            'ザ':'za','ジ':'ji','ズ':'zu','ゼ':'ze','ゾ':'zo',
+            'ダ':'da','ぢ':'ji','ヅ':'zu','デ':'de','ド':'do',
+            'バ':'ba','ビ':'bi','ぶ':'bu','ベ':'be','ボ':'bo',
+            'パ':'pa','ぴ':'pi','プ':'pu','ペ':'pe','ポ':'po',
+            'ー': '-'
+        };
+
+        function toRomaji(text) {
+            if (!text) return '';
+            let res = '';
+            let i = 0;
+            while (i < text.length) {
+                if (i + 1 < text.length) {
+                    let pair = text.substring(i, i + 2);
+                    if (kanaToRomajiMap[pair]) {
+                        res += kanaToRomajiMap[pair];
+                        i += 2;
+                        continue;
+                    }
+                }
+                let char = text[i];
+                if (char === 'っ' || char === 'ッ') {
+                    if (i + 1 < text.length) {
+                        let nextChar = text[i+1];
+                        let nextRomaji = kanaToRomajiMap[nextChar] || (i+2 < text.length ? kanaToRomajiMap[text.substring(i+1, i+3)] : '');
+                        if (nextRomaji) res += nextRomaji[0];
+                    }
+                    i++;
+                    continue;
+                }
+                res += kanaToRomajiMap[char] || char;
+                i++;
+            }
+            return res;
+        }
+
+        let database = { lessons: [] };
+        let currentLessonWords = [];
+        let selectedWords = [];
+        let currentIndex = 0;
+        let currentOptions = [];
+        let isAnswered = false;
+
+        document.addEventListener("DOMContentLoaded", () => fetchDataFromFile('./data.json'));
+
+        function fetchDataFromFile(filePath) {
+            fetch(filePath).then(r => r.json()).then(data => { database = data; renderLessonMenu(); })
+            .catch(e => { document.getElementById('lessons-list-container').innerHTML = `<div class="text-xs text-red-400 py-2">Hãy nạp file JSON bằng nút phía dưới.</div>`; });
+        }
+
+        function showScreen(id) {
+            ['screen-lesson-select','screen-word-list','screen-flashcard','screen-match','screen-fill-blank','screen-example-study'].forEach(s => document.getElementById(s).classList.add('hidden'));
+            document.getElementById(id).classList.remove('hidden');
+        }
+
+        function renderLessonMenu() {
+            const container = document.getElementById('lessons-list-container');
+            container.innerHTML = '';
+            if (!database.lessons) return;
+            let total = 0;
+            database.lessons.forEach(l => {
+                const count = l.vocabulary ? l.vocabulary.length : 0;
+                total += count;
+                const btn = document.createElement('button');
+                btn.className = "w-full py-3 px-4 bg-gray-800 hover:bg-gray-700 border border-gray-600 rounded-xl font-semibold text-white flex justify-between items-center transition";
+                btn.onclick = () => selectLesson(l.lesson_number);
+                btn.innerHTML = `<span>${l.title || 'Bài ' + l.lesson_number} (${count} từ)</span><span class="text-blue-400 text-sm">Chọn &rarr;</span>`;
+                container.appendChild(btn);
+            });
+            const allBtn = document.createElement('button');
+            allBtn.className = "w-full py-3 px-4 bg-blue-600/20 hover:bg-blue-600/30 border border-blue-500/50 rounded-xl font-semibold text-blue-300 flex justify-between items-center transition mt-2";
+            allBtn.onclick = () => selectLesson('all');
+            allBtn.innerHTML = `<span>Học tất cả (${total} từ)</span><span class="text-blue-400 text-sm">Chọn &rarr;</span>`;
+            container.appendChild(allBtn);
+        }
+
+        function selectLesson(num) {
+            currentLessonWords = [];
+            if(num === 'all') {
+                database.lessons.forEach(l => l.vocabulary && l.vocabulary.forEach(v => currentLessonWords.push(v)));
+            } else {
+                const f = database.lessons.find(l => l.lesson_number == num);
+                if(f && f.vocabulary) currentLessonWords = [...f.vocabulary];
+            }
+            selectedWords = [...currentLessonWords];
+            renderWordList();
+            showScreen('screen-word-list');
+        }
+
+        function handleFileUpload(e) {
+            const f = e.target.files[0];
+            if(!f) return;
+            const r = new FileReader();
+            r.onload = ev => { database = JSON.parse(ev.target.result); renderLessonMenu(); };
+            r.readAsText(f);
+        }
+
+        function renderWordList() {
+            const container = document.getElementById('word-list-container');
+            container.innerHTML = '';
+            currentLessonWords.forEach(item => {
+                const isChecked = selectedWords.some(w => w.word === item.word);
+                const romaji = toRomaji(item.word);
+                const card = document.createElement('div');
+                card.className = `box-bg p-4 rounded-xl flex items-center justify-between cursor-pointer border transition-all ${isChecked ? 'border-blue-500 bg-blue-950/20' : 'border-gray-800 opacity-60'}`;
+                card.onclick = () => {
+                    const idx = selectedWords.findIndex(w => w.word === item.word);
+                    if(idx > -1) selectedWords.splice(idx, 1); else selectedWords.push(item);
+                    renderWordList();
+                };
+                card.innerHTML = `
+                    <div class="flex items-center space-x-3">
+                        <div>
+                            <div class="font-bold text-white text-lg">${item.word} <span class="text-yellow-400 text-sm font-normal">${item.kanji?`(${item.kanji})`:''}</span></div>
+                            <div class="text-xs text-cyan-400 font-mono">[${romaji}]</div>
+                            <div class="text-xs text-gray-400 mt-0.5">${item.meaning}</div>
+                        </div>
+                    </div>`;
+                container.appendChild(card);
+            });
+            document.getElementById('selected-count-badge').textContent = selectedWords.length;
+        }
+
+        function selectAllWords(bool) { selectedWords = bool ? [...currentLessonWords] : []; renderWordList(); }
+
+        function speakWord(text) {
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel();
+                const u = new SpeechSynthesisUtterance(text);
+                u.lang = /[a-zA-Z]/.test(text) && !/[ぁ-んァ-ン]/ ? 'en-US' : 'ja-JP';
+                u.rate = 0.85;
+                window.speechSynthesis.speak(u);
+            }
+        }
+
+        /* ==================== MODE 1: FLASHCARD QUIZ ==================== */
+        function startFlashcards(shouldShuffle = false) {
+            if (!selectedWords.length) return alert('Chưa chọn từ nào!');
+            if (shouldShuffle) selectedWords.sort(() => 0.5 - Math.random());
+            currentIndex = 0;
+            showScreen('screen-flashcard');
+            loadFlashcard();
+        }
+
+        function buildOptions(correctWord) {
+            let pool = currentLessonWords.filter(w => w.meaning !== correctWord.meaning);
+            pool.sort(() => 0.5 - Math.random());
+            let options = [
+                { label: '1', text: correctWord.meaning, isCorrect: true },
+                { label: '2', text: pool[0] ? pool[0].meaning : "Nghĩa khác A", isCorrect: false },
+                { label: '3', text: pool[1] ? pool[1].meaning : "Nghĩa khác B", isCorrect: false }
+            ];
+            options.sort(() => 0.5 - Math.random());
+            options.forEach((opt, index) => opt.label = (index + 1).toString());
+            return options;
+        }
+
+        function loadFlashcard() {
+            if (selectedWords.length === 0) return;
+            isAnswered = false;
+            const q = selectedWords[currentIndex];
+            document.getElementById('quiz-progress-badge').textContent = `Từ ${currentIndex + 1} / ${selectedWords.length}`;
+            document.getElementById('card-japanese-word').textContent = q.word;
+            document.getElementById('card-romaji-text').textContent = `[ ${toRomaji(q.word)} ]`;
+            document.getElementById('card-kanji-text').textContent = q.kanji ? `[ ${q.kanji} ]` : '';
+            
+            // Xử lý hiển thị dòng ví dụ, tô màu nổi bật từ vựng và kèm nghĩa tiếng Việt câu ví dụ
+            const exBox = document.getElementById('card-example-box');
+            if (q.example_jp) {
+                exBox.classList.remove('hidden');
+                let highlightedJp = q.example_jp;
+                let targetWord = q.kanji ? q.kanji : q.word;
+                if (highlightedJp.includes(targetWord)) {
+                    highlightedJp = highlightedJp.replace(targetWord, `<span class="text-yellow-400 font-extrabold underline decoration-yellow-400">${targetWord}</span>`);
+                } else if (highlightedJp.includes(q.word)) {
+                    highlightedJp = highlightedJp.replace(q.word, `<span class="text-yellow-400 font-extrabold underline decoration-yellow-400">${q.word}</span>`);
+                }
+                document.getElementById('card-example-jp').innerHTML = highlightedJp;
+                document.getElementById('card-example-vi').textContent = q.example_vi || '';
+                document.getElementById('card-example-hiragana').textContent = q.example_hiragana || '';
+            } else {
+                exBox.classList.add('hidden');
+            }
+
+            speakWord(q.word);
+
+            currentOptions = buildOptions(q);
+            const container = document.getElementById('quiz-options-container');
+            container.innerHTML = '';
+            currentOptions.forEach(opt => {
+                const btn = document.createElement('button');
+                btn.dataset.key = opt.label;
+                btn.className = 'option-btn w-full text-left p-4 rounded-xl font-medium text-lg text-gray-200 flex items-center justify-between gap-2';
+                btn.innerHTML = `<div class="flex items-center"><span class="mr-3 font-bold text-xl text-blue-400">[${opt.label}]</span> <span class="text-white">${opt.text}</span></div>`;
+                btn.onclick = () => selectQuizOption(opt.label);
+                container.appendChild(btn);
+            });
+        }
+
+        function selectQuizOption(selectedKey) {
+            if (isAnswered) return;
+            isAnswered = true;
+            const buttons = document.querySelectorAll('#quiz-options-container .option-btn');
+            buttons.forEach(btn => {
+                btn.disabled = true;
+                const key = btn.dataset.key;
+                const opt = currentOptions.find(o => o.label === key);
+                if (opt.isCorrect) btn.classList.add('correct-ans');
+                else if (key === selectedKey && !opt.isCorrect) btn.classList.add('wrong-ans');
+                else btn.classList.add('opacity-40');
+            });
+            speakCurrentWord();
+        }
+
+        function speakCurrentWord() { speakWord(selectedWords[currentIndex].word); }
+        function nextCard() { if (currentIndex < selectedWords.length - 1) { currentIndex++; loadFlashcard(); } }
+        function prevCard() { if (currentIndex > 0) { currentIndex--; loadFlashcard(); } }
+
+        document.addEventListener('keydown', function(e) {
+            if (document.getElementById('screen-flashcard').classList.contains('hidden')) return;
+            if (['1', '2', '3'].includes(e.key)) {
+                e.preventDefault();
+                if (!isAnswered) selectQuizOption(e.key);
+            }
+            if (e.key === 'Tab') { e.preventDefault(); nextCard(); }
+            if (e.key === 'Alt') { e.preventDefault(); prevCard(); }
+            if (e.code === 'Space') { e.preventDefault(); speakCurrentWord(); }
+        });
+
+        /* ==================== MODE 2 & 3: GHÉP TỪ VÀ NỐI ÂM THANH ==================== */
+        let matchPool = [];
+        let currentBatch = [];
+        let selectedLeft = null;
+        let selectedRight = null;
+        let matchModeType = 'text';
+
+        function startMatchMode(type) {
+            if (!selectedWords.length) return alert('Chưa chọn từ nào!');
+            matchModeType = type;
+            matchPool = [...selectedWords].sort(() => 0.5 - Math.random());
+            document.getElementById('match-header-title').textContent = type === 'text' ? 'GHÉP TỪ VỚI NGHĨA ĐÚNG' : 'GHÉP ÂM THANH VỚI NGHĨA ĐÚNG';
+            showScreen('screen-match');
+            loadNextMatchBatch();
+        }
+
+        function loadNextMatchBatch() {
+            selectedLeft = null;
+            selectedRight = null;
+            document.getElementById('match-progress').textContent = `Còn ${matchPool.length} từ`;
+
+            if (matchPool.length === 0) {
+                alert('Chúc mừng! Bạn đã hoàn thành xuất sắc bài ghép từ!');
+                showScreen('screen-word-list');
+                return;
+            }
+
+            currentBatch = matchPool.splice(0, 4);
+            let leftItems = [...currentBatch].sort(() => 0.5 - Math.random());
+            let rightItems = [...currentBatch].sort(() => 0.5 - Math.random());
+
+            const leftCol = document.getElementById('match-left-column');
+            const rightCol = document.getElementById('match-right-column');
+            leftCol.innerHTML = '';
+            rightCol.innerHTML = '';
+
+            leftItems.forEach(item => {
+                const btn = document.createElement('button');
+                btn.className = 'match-btn w-full py-4 px-6 rounded-xl font-bold text-white flex items-center justify-center min-h-[60px] text-lg';
+                btn.dataset.id = item.word;
+                
+                if (matchModeType === 'text') {
+                    btn.textContent = item.word;
+                } else {
+                    btn.innerHTML = `<svg class="w-6 h-6 text-cyan-400 pointer-events-none" fill="currentColor" viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/></svg>`;
+                }
+
+                btn.onclick = () => {
+                    speakWord(item.word);
+                    selectMatchItem('left', btn, item);
+                };
+                leftCol.appendChild(btn);
+            });
+
+            rightItems.forEach(item => {
+                const btn = document.createElement('button');
+                btn.className = 'match-btn w-full py-4 px-6 rounded-xl font-bold text-gray-200 flex items-center justify-center min-h-[60px] text-base';
+                btn.dataset.id = item.word;
+                btn.textContent = item.meaning;
+                btn.onclick = () => selectMatchItem('right', btn, item);
+                rightCol.appendChild(btn);
+            });
+        }
+
+        function selectMatchItem(side, element, item) {
+            if (side === 'left') {
+                document.querySelectorAll('#match-left-column .match-btn').forEach(b => b.classList.remove('match-selected'));
+                element.classList.add('match-selected');
+                selectedLeft = { element, item };
+            } else {
+                document.querySelectorAll('#match-right-column .match-btn').forEach(b => b.classList.remove('match-selected'));
+                element.classList.add('match-selected');
+                selectedRight = { element, item };
+            }
+
+            if (selectedLeft && selectedRight) {
+                if (selectedLeft.item.word === selectedRight.item.word) {
+                    selectedLeft.element.classList.add('match-matched');
+                    selectedRight.element.classList.add('match-matched');
+                    selectedLeft = null;
+                    selectedRight = null;
+
+                    setTimeout(() => {
+                        const remaining = document.querySelectorAll('#match-left-column .match-btn:not(.match-matched)');
+                        if (remaining.length === 0) loadNextMatchBatch();
+                    }, 400);
+                } else {
+                    selectedLeft.element.classList.add('wrong-ans');
+                    selectedRight.element.classList.add('wrong-ans');
+                    const l = selectedLeft.element;
+                    const r = selectedRight.element;
+                    setTimeout(() => {
+                        l.classList.remove('wrong-ans', 'match-selected');
+                        r.classList.remove('wrong-ans', 'match-selected');
+                    }, 500);
+                    selectedLeft = null;
+                    selectedRight = null;
+                }
+            }
+        }
+
+        /* ==================== MODE 4: ĐIỀN TỪ VÀO CÂU ==================== */
+        let fillBlankIndex = 0;
+        let fillBlankAnswered = false;
+
+        function startFillBlankMode() {
+            let validWords = selectedWords.filter(w => w.example_jp);
+            if (validWords.length === 0) {
+                return alert('Các từ vựng đã chọn chưa có dữ liệu câu ví dụ (example_jp) trong DB!');
+            }
+            fillBlankIndex = 0;
+            showScreen('screen-fill-blank');
+            loadFillBlankCard();
+        }
+
+        function loadFillBlankCard() {
+            let validWords = selectedWords.filter(w => w.example_jp);
+            if (fillBlankIndex >= validWords.length) fillBlankIndex = 0;
+            const q = validWords[fillBlankIndex];
+            fillBlankAnswered = false;
+
+            document.getElementById('fill-blank-progress').textContent = `Câu ${fillBlankIndex + 1} / ${validWords.length}`;
+            
+            let target = q.kanji ? q.kanji : q.word;
+            let sentenceWithBlank = q.example_jp.includes(target) ? q.example_jp.replace(target, "_____") : q.example_jp.replace(q.word, "_____");
+            
+            document.getElementById('fill-blank-sentence').textContent = sentenceWithBlank;
+            document.getElementById('fill-blank-meaning').textContent = q.example_vi || '';
+
+            speakWord(q.example_jp);
+
+            let pool = currentLessonWords.filter(w => w.word !== q.word).sort(() => 0.5 - Math.random());
+            let options = [
+                { word: q.word, meaning: q.meaning, isCorrect: true },
+                { word: pool[0]?.word || "1", meaning: pool[0]?.meaning || "Nghĩa A", isCorrect: false },
+                { word: pool[1]?.word || "2", meaning: pool[1]?.meaning || "Nghĩa B", isCorrect: false },
+                { word: pool[2]?.word || "3", meaning: pool[2]?.meaning || "Nghĩa C", isCorrect: false }
+            ].sort(() => 0.5 - Math.random());
+
+            const container = document.getElementById('fill-blank-options');
+            container.innerHTML = '';
+            options.forEach(opt => {
+                const btn = document.createElement('button');
+                btn.className = 'option-btn w-full p-4 rounded-xl text-left flex flex-col transition shadow';
+                btn.innerHTML = `
+                    <span class="text-white font-bold text-lg">${opt.word}</span>
+                    <span class="text-xs text-gray-400 mt-0.5">${opt.meaning}</span>
+                `;
+                btn.onclick = () => {
+                    if (fillBlankAnswered) return;
+                    fillBlankAnswered = true;
+                    if (opt.isCorrect) {
+                        btn.classList.add('correct-ans');
+                    } else {
+                        btn.classList.add('wrong-ans');
+                        Array.from(container.children).forEach(b => {
+                            if (b.textContent.includes(q.word)) b.classList.add('correct-ans');
+                        });
+                    }
+                };
+                container.appendChild(btn);
+            });
+        }
+
+        function speakFillBlankWord() {
+            let validWords = selectedWords.filter(w => w.example_jp);
+            if (validWords[fillBlankIndex]) speakWord(validWords[fillBlankIndex].example_jp);
+        }
+
+        function nextFillBlank() {
+            let validWords = selectedWords.filter(w => w.example_jp);
+            if (fillBlankIndex < validWords.length - 1) {
+                fillBlankIndex++;
+                loadFillBlankCard();
+            } else {
+                alert('Bạn đã hoàn thành tất cả câu điền từ!');
+                showScreen('screen-word-list');
+            }
+        }
+
+        function prevFillBlank() {
+            let validWords = selectedWords.filter(w => w.example_jp);
+            if (fillBlankIndex > 0) {
+                fillBlankIndex--;
+                loadFillBlankCard();
+            }
+        }
+
+        /* ==================== MODE 5: HỌC THEO VÍ DỤ ==================== */
+        let exIndex = 0;
+        let validExampleWords = [];
+
+        function startExampleStudyMode() {
+            validExampleWords = selectedWords.filter(w => w.example_jp);
+            if (validExampleWords.length === 0) return alert('Không có từ vựng nào có câu ví dụ (example_jp) trong danh sách đã chọn!');
+            exIndex = 0;
+            showScreen('screen-example-study');
+            loadExampleCard();
+        }
+
+        function loadExampleCard() {
+            if (exIndex >= validExampleWords.length) exIndex = 0;
+            const q = validExampleWords[exIndex];
+            document.getElementById('ex-progress-badge').textContent = `Ví dụ ${exIndex + 1} / ${validExampleWords.length}`;
+            document.getElementById('ex-word-tag').textContent = `${q.word} ${q.kanji ? '('+q.kanji+')' : ''} - ${q.meaning}`;
+            
+            // Theo đúng thứ tự yêu cầu: Câu Nhật -> Hiragana -> Câu tiếng Việt đầy đủ -> Dịch từng từ
+            document.getElementById('ex-sentence-jp').textContent = q.example_jp;
+            document.getElementById('ex-sentence-hiragana').textContent = q.example_hiragana || '';
+            document.getElementById('ex-sentence-vi').textContent = q.example_vi || '';
+            document.getElementById('ex-sentence-breakdown').textContent = q.example_vi_words || 'Chưa có phân tích chi tiết';
+            
+            speakWord(q.example_jp);
+        }
+
+        function speakExample() {
+            if (validExampleWords[exIndex]) speakWord(validExampleWords[exIndex].example_jp);
+        }
+
+        function nextExample() {
+            if (exIndex < validExampleWords.length - 1) {
+                exIndex++;
+                loadExampleCard();
+            } else {
+                alert('Đã học hết các câu ví dụ!');
+                showScreen('screen-word-list');
+            }
+        }
+
+        function prevExample() {
+            if (exIndex > 0) {
+                exIndex--;
+                loadExampleCard();
+            }
+        }
+    </script>
+</body>
+</html>
